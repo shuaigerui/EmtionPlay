@@ -52,7 +52,6 @@ class EP_HomeVC: EP_BaseVC {
         }
     }
 
-
     private func cellSize(for collectionView: UICollectionView) -> CGSize {
         let width = collectionView.bounds.width > 0
             ? collectionView.bounds.width

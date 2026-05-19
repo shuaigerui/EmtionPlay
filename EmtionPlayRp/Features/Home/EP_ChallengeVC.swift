@@ -51,8 +51,8 @@ class EP_ChallengeVC: EP_BaseVC {
         view.addSubview(bgV)
         view.addSubview(backButton)
         view.addSubview(titleView)
-        view.addSubview(fireView)
         view.addSubview(releaseView)
+        view.addSubview(fireView)
         view.addSubview(collectionView)
     }
 

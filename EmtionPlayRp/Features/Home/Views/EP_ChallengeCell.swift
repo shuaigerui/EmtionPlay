@@ -64,10 +64,10 @@ final class EP_ChallengeCell: UICollectionViewCell {
         return view
     }()
 
-    private let likeIconView: UIImageView = {
-        let view = UIImageView()
-        view.image = "home_liked".toImage
-        view.contentMode = .scaleAspectFill
+    private let likeIconView: UIButton = {
+        let view = UIButton(type: .custom)
+        view.setImage("home_like".toImage, for: .normal)
+        view.setImage("home_liked".toImage, for: .selected)
         return view
     }()
 
