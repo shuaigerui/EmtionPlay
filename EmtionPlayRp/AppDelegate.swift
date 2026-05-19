@@ -42,7 +42,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //            self.window?.makeKeyAndVisible()
 //        }
 //        self.window?.rootViewController = launchVC
-        self.window?.rootViewController = UINavigationController(rootViewController: EP_WelcomeVC())
+        self.window?.rootViewController = EP_TabBarVC()//UINavigationController(rootViewController: EP_WelcomeVC())
         self.window?.makeKeyAndVisible()
     }
 }

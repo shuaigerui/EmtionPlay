@@ -9,16 +9,33 @@ import UIKit
 
 class EP_SetupVC: EP_BaseVC {
 
+    enum Mode {
+        case signIn
+        case create
+    }
+
+    private let mode: Mode
+
+    init(mode: Mode) {
+        self.mode = mode
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     private enum Layout {
-        static let cardInset: CGFloat = 24
-        static let fieldHeight: CGFloat = 48
-        static let labelFieldSpacing: CGFloat = 8
+        static let cardInset: CGFloat = 22
+        static let fieldHeight: CGFloat = 54
+        static let labelFieldSpacing: CGFloat = 19
         static let fieldGroupSpacing: CGFloat = 20
         static let formTopInset: CGFloat = 130
         static let formBottomInset: CGFloat = 28
         static let fieldIconSize: CGFloat = 24
         static let fieldHorizontalPadding: CGFloat = 16
-        static let fieldIconTrailing: CGFloat = 12
+        static let fieldIconTrailing: CGFloat = 14
     }
 
     private var isPasswordVisible = false
@@ -32,8 +49,18 @@ class EP_SetupVC: EP_BaseVC {
     }
 
     func setupUI() {
+        switch mode {
+        case .signIn:
+            cardView.image = "login_card".toImage
+            sureButton.setImage("login_next".toImage, for: .normal)
+        case .create:
+            cardView.image = "setup_card".toImage
+            sureButton.setImage("setup_button".toImage, for: .normal)
+        }
+
         view.addSubview(backButton)
         view.addSubview(cardView)
+        view.addSubview(sureButton)
 
         cardView.addSubview(mailLabel)
         cardView.addSubview(mailFieldContainer)
@@ -90,7 +117,6 @@ class EP_SetupVC: EP_BaseVC {
             make.leading.trailing.equalTo(mailLabel)
             make.top.equalTo(passwordLabel.snp.bottom).offset(Layout.labelFieldSpacing)
             make.height.equalTo(Layout.fieldHeight)
-            make.bottom.equalToSuperview().inset(Layout.formBottomInset)
         }
 
         passwordVisibilityButton.snp.makeConstraints { make in
@@ -104,6 +130,13 @@ class EP_SetupVC: EP_BaseVC {
             make.trailing.equalTo(passwordVisibilityButton.snp.leading).offset(-8)
             make.centerY.equalToSuperview()
         }
+
+        sureButton.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-75)
+            make.height.equalTo(75)
+            make.width.equalTo(295)
+        }
     }
 
     func setupEvents() {
@@ -111,6 +144,12 @@ class EP_SetupVC: EP_BaseVC {
         mailClearButton.addTarget(self, action: #selector(onMailClearTapped), for: .touchUpInside)
         passwordVisibilityButton.addTarget(self, action: #selector(onPasswordVisibilityTapped), for: .touchUpInside)
         mailTextField.addTarget(self, action: #selector(onMailTextChanged), for: .editingChanged)
+        sureButton.addTarget(self, action: #selector(onSureTapped), for: .touchUpInside)
+    }
+
+    @objc private func onSureTapped() {
+        guard mode == .create else { return }
+        navigationController?.pushViewController(EP_SetupInfoVC(), animated: true)
     }
 
     @objc private func clickBackButton() {
@@ -148,9 +187,10 @@ class EP_SetupVC: EP_BaseVC {
 
     private func makeFieldContainer() -> UIView {
         let view = UIView()
-        view.backgroundColor = UIColor.color(hexString: "#EEEEEE")
+        view.backgroundColor = "#F1F1F1".toColor
         view.layer.cornerRadius = Layout.fieldHeight / 2
         view.clipsToBounds = true
+        view.layer.masksToBounds = true
         return view
     }
 
@@ -175,7 +215,6 @@ class EP_SetupVC: EP_BaseVC {
 
     private let cardView: UIImageView = {
         let view = UIImageView()
-        view.image = "login_card".toImage
         view.contentMode = .scaleAspectFill
         view.isUserInteractionEnabled = true
         return view
@@ -211,5 +250,9 @@ class EP_SetupVC: EP_BaseVC {
         let button = UIButton(type: .custom)
         button.setImage("login_hidden".toImage, for: .normal)
         return button
+    }()
+    
+    private lazy var sureButton: UIButton = {
+        UIButton(type: .custom)
     }()
 }

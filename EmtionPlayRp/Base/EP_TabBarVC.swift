@@ -47,13 +47,29 @@ enum TabbarType: CaseIterable {
 class EP_TabBarVC: UITabBarController {
 
     private enum Layout {
-        static let cornerRadius: CGFloat = 24
+        static let tabBarContentHeight: CGFloat = 49
+        static let topCornerRadius: CGFloat = 24
+    }
+
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        setValue(EP_TabBar(), forKey: "tabBar")
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupViewControllers()
         setupTabBarAppearance()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutTabBarToBottom()
     }
 
     private func setupViewControllers() {
@@ -65,13 +81,11 @@ class EP_TabBarVC: UITabBarController {
     }
 
     private func makeTabBarItem(for type: TabbarType) -> UITabBarItem {
-        let item = UITabBarItem(
+        UITabBarItem(
             title: nil,
             image: type.imageName.toImage?.withRenderingMode(.alwaysOriginal),
             selectedImage: type.selImageName.toImage?.withRenderingMode(.alwaysOriginal)
         )
-        item.imageInsets = UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-        return item
     }
 
     private func setupTabBarAppearance() {
@@ -81,6 +95,7 @@ class EP_TabBarVC: UITabBarController {
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = .white
         appearance.shadowColor = .clear
+        appearance.shadowImage = UIImage()
         appearance.backgroundEffect = nil
 
         let itemAppearance = UITabBarItemAppearance()
@@ -93,11 +108,30 @@ class EP_TabBarVC: UITabBarController {
         appearance.compactInlineLayoutAppearance = itemAppearance
 
         tabBar.standardAppearance = appearance
-        tabBar.scrollEdgeAppearance = appearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = appearance
+        }
         tabBar.isTranslucent = false
         tabBar.tintColor = .clear
         tabBar.unselectedItemTintColor = .clear
-        tabBar.layer.cornerRadius = Layout.cornerRadius
+        tabBar.shadowImage = UIImage()
+        tabBar.backgroundImage = UIImage()
+        tabBar.backgroundColor = .white
+        tabBar.barTintColor = .white
+    }
+
+    private func layoutTabBarToBottom() {
+        let safeBottom = view.safeAreaInsets.bottom
+        let tabBarHeight = Layout.tabBarContentHeight + safeBottom
+
+        var frame = tabBar.frame
+        frame.size.width = view.bounds.width
+        frame.size.height = tabBarHeight
+        frame.origin.x = 0
+        frame.origin.y = view.bounds.height - tabBarHeight
+        tabBar.frame = frame
+
+        tabBar.layer.cornerRadius = Layout.topCornerRadius
         tabBar.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         tabBar.layer.masksToBounds = true
     }

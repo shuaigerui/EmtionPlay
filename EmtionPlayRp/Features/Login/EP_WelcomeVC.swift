@@ -67,11 +67,11 @@ class EP_WelcomeVC: UIViewController {
     }
 
     @objc private func onCreateAccountTapped() {
-        self.navigationController?.pushViewController(EP_SetupVC(), animated: true)
+        navigationController?.pushViewController(EP_SetupVC(mode: .create), animated: true)
     }
 
     @objc private func onSignInTapped() {
-        // TODO: Navigate to sign in
+        navigationController?.pushViewController(EP_SetupVC(mode: .signIn), animated: true)
     }
 
     private func makeLoginButton(title: String, systemImage: String? = nil) -> UIButton {
