@@ -70,6 +70,9 @@ class EP_ProfileVC: EP_BaseVC {
         header.onSettingTapped = { [weak self] in
             self?.navigationController?.pushViewController(EP_SettingVC(), animated: true)
         }
+        header.onShopTapped = { [weak self] in
+            self?.navigationController?.pushViewController(EP_ShopVC(), animated: true)
+        }
         return header
     }()
 
