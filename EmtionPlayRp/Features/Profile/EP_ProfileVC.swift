@@ -76,8 +76,8 @@ class EP_ProfileVC: EP_BaseVC {
         header.onEditTapped = { [weak self] in
             guard let self else { return }
             let vc = EP_EditVC(
-                avatarImageName: headerModel.avatarImageName,
-                nickname: headerModel.userName
+                avatarImageName: self.headerModel.avatarImageName,
+                nickname: self.headerModel.userName
             )
             self.navigationController?.pushViewController(vc, animated: true)
         }
@@ -86,6 +86,13 @@ class EP_ProfileVC: EP_BaseVC {
         }
         header.onFanTapped = { [weak self] in
             self?.navigationController?.pushViewController(EP_UserListVC(mode: .fan), animated: true)
+        }
+        header.onAchievementTapped = { [weak self] in
+            guard let self else { return }
+            self.navigationController?.pushViewController(
+                EP_BadgeVC(avatarImageName: self.headerModel.avatarImageName),
+                animated: true
+            )
         }
         return header
     }()
