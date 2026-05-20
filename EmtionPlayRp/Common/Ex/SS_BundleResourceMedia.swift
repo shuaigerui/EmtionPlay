@@ -89,6 +89,11 @@ enum SS_BundleResourceMedia {
         UIImage(contentsOfFile: fileURL.path)
     }
 
+    static func avatarImage(baseName: String) -> UIImage? {
+        guard let url = avatarImageURL(baseName: baseName) else { return nil }
+        return uiImage(fileURL: url)
+    }
+
     /// 加载用户头像：`avatarJPEGData` → Resource/Avatar → `UIImage(named:)`。
 //    static func loadAvatar(for user: SS_UserModel, completion: @escaping (UIImage?) -> Void) {
 //        if let data = user.avatarJPEGData, let img = UIImage(data: data) {

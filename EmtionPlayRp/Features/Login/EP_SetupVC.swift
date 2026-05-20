@@ -148,8 +148,31 @@ class EP_SetupVC: EP_BaseVC {
     }
 
     @objc private func onSureTapped() {
-        guard mode == .create else { return }
-        navigationController?.pushViewController(EP_SetupInfoVC(), animated: true)
+        let email = mailTextField.text ?? ""
+        let password = passwordTextField.text ?? ""
+
+        switch mode {
+        case .signIn:
+            if EP_CurrentUser.shared.signIn(email: email, password: password) {
+                EP_CurrentUser.shared.switchToMainInterface()
+            } else {
+                showAlert(message: "Invalid email or password.")
+            }
+        case .create:
+            guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !password.isEmpty else {
+                showAlert(message: "Please enter email and password.")
+                return
+            }
+            let infoVC = EP_SetupInfoVC(email: email, password: password)
+            navigationController?.pushViewController(infoVC, animated: true)
+        }
+    }
+
+    private func showAlert(message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     @objc private func clickBackButton() {

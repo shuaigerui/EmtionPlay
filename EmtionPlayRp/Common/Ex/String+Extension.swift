@@ -21,9 +21,14 @@ extension String {
         return UIColor.color(hexString: self, alpha: 1.0)
     }
     
-    // 图片
+    // 图片：Assets → Resource/Avatar → 沙盒用户头像
     var toImage: UIImage? {
-        UIImage(named: self)
+        UIImage.ep_named(self)
+    }
+
+    /// 仅加载 Resource/Avatar 下头像（如 avatar_01）
+    var toAvatarImage: UIImage? {
+        UIImage.ep_avatar(self)
     }
     
     var intValue: Int {

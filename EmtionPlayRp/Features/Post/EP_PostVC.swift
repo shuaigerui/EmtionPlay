@@ -86,8 +86,14 @@ class EP_PostVC: EP_BaseVC {
         }
     }
     
-    private func setupEvents(){
+    private func setupEvents() {
         releaseButton.addTarget(self, action: #selector(clickReleaseButton), for: .touchUpInside)
+        let aiTap = UITapGestureRecognizer(target: self, action: #selector(onAIButtonTapped))
+        aiButton.addGestureRecognizer(aiTap)
+    }
+
+    @objc private func onAIButtonTapped() {
+        navigationController?.pushViewController(EP_AIRoomVC(), animated: true)
     }
     
     @objc private func clickReleaseButton() {

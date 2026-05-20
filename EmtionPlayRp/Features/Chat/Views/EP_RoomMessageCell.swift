@@ -87,6 +87,18 @@ final class EP_RoomMessageCell: UITableViewCell {
         }
     }
 
+    func configureForAI(with item: EP_RoomMessageItem) {
+        configure(with: item)
+        switch item.kind {
+        case .incoming:
+            avatarImageView.image = "ai_icon".toImage
+            bubbleView.backgroundColor = "#DED4F7".toColor
+        case .outgoing:
+            avatarImageView.image = item.avatarImageName.toImage
+            bubbleView.backgroundColor = "#C890F7".toColor
+        }
+    }
+
     private let avatarImageView: UIImageView = {
         let view = UIImageView()
         view.contentMode = .scaleAspectFill

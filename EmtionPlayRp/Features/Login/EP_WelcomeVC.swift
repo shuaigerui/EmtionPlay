@@ -63,7 +63,9 @@ class EP_WelcomeVC: UIViewController {
     }
 
     @objc private func onAppleSignInTapped() {
-        // TODO: Sign in with Apple
+        if EP_CurrentUser.shared.signInWithApple(displayName: nil, email: nil) {
+            EP_CurrentUser.shared.switchToMainInterface()
+        }
     }
 
     @objc private func onCreateAccountTapped() {

@@ -9,6 +9,21 @@ import UIKit
 
 class EP_SetupInfoVC: EP_BaseVC {
 
+    private let email: String
+    private let password: String
+    private var pickedAvatarImage: UIImage?
+
+    init(email: String, password: String) {
+        self.email = email
+        self.password = password
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     private enum Layout {
         static let cardInset: CGFloat = 22
         static let fieldHeight: CGFloat = 54
@@ -108,8 +123,35 @@ class EP_SetupInfoVC: EP_BaseVC {
     private func setupEvents() {
         backButton.addTarget(self, action: #selector(clickBackButton), for: .touchUpInside)
         pickPhotoButton.addTarget(self, action: #selector(onPickPhotoTapped), for: .touchUpInside)
+        createButton.addTarget(self, action: #selector(onCreateTapped), for: .touchUpInside)
         let avatarTap = UITapGestureRecognizer(target: self, action: #selector(onPickPhotoTapped))
         avatarContainer.addGestureRecognizer(avatarTap)
+    }
+
+    @objc private func onCreateTapped() {
+        let name = nameTextField.text ?? ""
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            showAlert(message: "Please enter your name.")
+            return
+        }
+        let defaultAvatar = "avatar_01"
+        if EP_CurrentUser.shared.register(
+            email: email,
+            password: password,
+            name: name,
+            avatar: defaultAvatar,
+            avatarImage: pickedAvatarImage
+        ) {
+            EP_CurrentUser.shared.switchToMainInterface()
+        } else {
+            showAlert(message: "Could not create account. Email may already be in use.")
+        }
+    }
+
+    private func showAlert(message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     @objc private func clickBackButton() {
@@ -210,6 +252,7 @@ extension EP_SetupInfoVC: UIImagePickerControllerDelegate, UINavigationControlle
         didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
     ) {
         let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage
+        pickedAvatarImage = image
         avatarImageView.image = image
         picker.dismiss(animated: true)
     }

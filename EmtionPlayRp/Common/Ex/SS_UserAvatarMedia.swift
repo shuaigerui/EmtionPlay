@@ -22,6 +22,11 @@ enum SS_UserAvatarMedia {
 
     /// 覆盖保存当前用户头像，返回 **baseName**（如 `av_9000`）。
     static func saveAvatar(_ image: UIImage, userId: Int64) -> String? {
+        saveAvatar(image, userId: "\(userId)")
+    }
+
+    /// 覆盖保存当前用户头像（字符串 userId），返回 **baseName**（如 `av_u_test`）。
+    static func saveAvatar(_ image: UIImage, userId: String) -> String? {
         ensureDirectory()
         guard let data = image.jpegData(compressionQuality: 0.88) else { return nil }
         let base = "av_\(userId)"

@@ -7,6 +7,27 @@ import UIKit
 
 extension UIImage {
 
+    /// 按名称加载图片：Assets.xcassets → `Resource/Avatar` → 沙盒 `UserAvatars`。
+    static func ep_named(_ name: String) -> UIImage? {
+        guard !name.isEmpty else { return nil }
+        if let image = UIImage(named: name) {
+            return image
+        }
+        if let image = ep_avatar(name) {
+            return image
+        }
+        if let image = SS_UserAvatarMedia.uiImage(baseName: name) {
+            return image
+        }
+        return nil
+    }
+
+    /// `Resource/Avatar/avatar_01.png` 等（baseName 不含扩展名）。
+    static func ep_avatar(_ baseName: String) -> UIImage? {
+        guard !baseName.isEmpty else { return nil }
+        return SS_BundleResourceMedia.avatarImage(baseName: baseName)
+    }
+
     /// 等比缩放，最长边不超过 `maxSide`（头像持久化等与注册页一致）。
     func ss_scaled(maxSide: CGFloat) -> UIImage {
         let maxDim = max(size.width, size.height)
