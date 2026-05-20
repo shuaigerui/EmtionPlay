@@ -9,14 +9,6 @@ import UIKit
 
 class EP_AIRoomVC: EP_BaseVC {
 
-    private enum Layout {
-        static let inputBarHeight: CGFloat = 64
-        static let pinkAreaHeight: CGFloat = 120
-        static let aiIconSize: CGFloat = 120
-        static let chatCornerRadius: CGFloat = 28
-        static let headerHeight: CGFloat = EP_AIHeaderView.preferredHeight
-    }
-
     private var messages: [EP_RoomMessageItem] = [
         EP_RoomMessageItem(
             kind: .incoming,
@@ -46,21 +38,19 @@ class EP_AIRoomVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
-        setupTableHeader()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        updateTableHeaderLayoutIfNeeded()
-        chatPanelView.layer.cornerRadius = Layout.chatCornerRadius
+        chatPanelView.layer.cornerRadius = 24
         chatPanelView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
     }
 
     private func setupUI() {
-        view.addSubview(pinkHeaderView)
         view.addSubview(chatPanelView)
         chatPanelView.addSubview(tableView)
         view.addSubview(aiIconView)
+        view.addSubview(hintLabel)
         view.addSubview(inputBarView)
         view.addSubview(backButton)
         view.addSubview(titleView)
@@ -81,31 +71,32 @@ class EP_AIRoomVC: EP_BaseVC {
             make.centerY.equalTo(backButton)
         }
 
-        pinkHeaderView.snp.makeConstraints { make in
-            make.top.leading.trailing.equalToSuperview()
-            make.bottom.equalTo(chatPanelView.snp.top).offset(Layout.aiIconSize / 2)
-        }
-
         aiIconView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.centerY.equalTo(chatPanelView.snp.top)
-            make.size.equalTo(Layout.aiIconSize)
+            make.size.equalTo(184)
         }
 
         chatPanelView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
-            make.top.equalTo(backButton.snp.bottom).offset(Layout.pinkAreaHeight)
+            make.top.equalTo(backButton.snp.bottom).offset(175)
             make.bottom.equalTo(inputBarView.snp.top)
+        }
+        
+        hintLabel.snp.makeConstraints { make in
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.top.equalTo(aiIconView.snp.bottom).offset(14)
         }
 
         tableView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.leading.trailing.bottom.equalToSuperview()
+            make.top.equalToSuperview().offset(160)
         }
 
         inputBarView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
             make.bottom.equalTo(view.safeAreaLayoutGuide)
-            make.height.equalTo(Layout.inputBarHeight)
+            make.height.equalTo(64)
         }
     }
 
@@ -116,20 +107,6 @@ class EP_AIRoomVC: EP_BaseVC {
         }
     }
 
-    private func setupTableHeader() {
-        let header = EP_AIHeaderView(
-            frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: Layout.headerHeight)
-        )
-        tableView.tableHeaderView = header
-    }
-
-    private func updateTableHeaderLayoutIfNeeded() {
-        guard let header = tableView.tableHeaderView as? EP_AIHeaderView else { return }
-        let width = tableView.bounds.width
-        guard width > 0, header.frame.size != CGSize(width: width, height: Layout.headerHeight) else { return }
-        header.frame = CGRect(x: 0, y: 0, width: width, height: Layout.headerHeight)
-        tableView.tableHeaderView = header
-    }
 
     private func appendOutgoingMessage(_ text: String) {
         messages.append(
@@ -149,12 +126,6 @@ class EP_AIRoomVC: EP_BaseVC {
         navigationController?.popViewController(animated: true)
     }
 
-    private let pinkHeaderView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor.color(hexString: "#FED9FA")
-        return view
-    }()
-
     private let chatPanelView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
@@ -165,7 +136,7 @@ class EP_AIRoomVC: EP_BaseVC {
     private let aiIconView: UIImageView = {
         let view = UIImageView()
         view.image = "ai_icon".toImage
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         return view
     }()
 
@@ -197,6 +168,16 @@ class EP_AIRoomVC: EP_BaseVC {
         view.image = "ai_title".toImage
         view.contentMode = .scaleAspectFit
         return view
+    }()
+    
+    private let hintLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Unlocking dynamic posting costs 10 gold coins."
+        label.font = .systemFont(ofSize: 20, weight: .semibold)
+        label.textColor = "#999999".toColor
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
     }()
 }
 

@@ -16,6 +16,9 @@ extension UIImage {
         if let image = ep_avatar(name) {
             return image
         }
+        if let image = ep_chat(name) {
+            return image
+        }
         if let image = SS_UserAvatarMedia.uiImage(baseName: name) {
             return image
         }
@@ -26,6 +29,12 @@ extension UIImage {
     static func ep_avatar(_ baseName: String) -> UIImage? {
         guard !baseName.isEmpty else { return nil }
         return SS_BundleResourceMedia.avatarImage(baseName: baseName)
+    }
+
+    /// `Resource/Chat/chat_01.png` 等（baseName 不含扩展名）。
+    static func ep_chat(_ baseName: String) -> UIImage? {
+        guard !baseName.isEmpty else { return nil }
+        return SS_BundleResourceMedia.chatImage(baseName: baseName)
     }
 
     /// 等比缩放，最长边不超过 `maxSide`（头像持久化等与注册页一致）。

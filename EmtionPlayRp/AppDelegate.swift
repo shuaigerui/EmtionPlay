@@ -42,11 +42,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //            self.window?.makeKeyAndVisible()
 //        }
 //        self.window?.rootViewController = launchVC
-//        if EP_CurrentUser.shared.isLoggedIn {
+        if EP_CurrentUser.shared.isLoggedIn {
             window?.rootViewController = EP_TabBarVC()
-//        } else {
-//            window?.rootViewController = UINavigationController(rootViewController: EP_WelcomeVC())
-//        }
+        } else {
+            window?.rootViewController = UINavigationController(rootViewController: EP_WelcomeVC())
+        }
         window?.makeKeyAndVisible()
     }
 }

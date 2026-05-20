@@ -82,9 +82,11 @@ enum SS_PublishedPostMedia {
 
 extension SS_BundleResourceMedia {
 
-    /// 优先沙盒用户发帖图片，再 bundle `Resource/Post`。
+    /// 优先沙盒用户发帖图片，再 bundle `Resource/Friend` / `Resource/Post`。
     static func resolvePostImageURL(baseName: String) -> URL? {
-        SS_PublishedPostMedia.imageFileURL(baseName: baseName) ?? postImageURL(baseName: baseName)
+        SS_PublishedPostMedia.imageFileURL(baseName: baseName)
+            ?? friendImageURL(baseName: baseName)
+            ?? postImageURL(baseName: baseName)
     }
 
     /// 优先沙盒用户发帖视频，再 bundle `Resource/Video`。

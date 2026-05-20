@@ -28,10 +28,21 @@ final class UserData {
             save()
         } else {
             ensureTestUserExists()
+            syncSeedPostsMediaIfNeeded()
         }
     }
 
     // MARK: - 查询
+
+    /// 所有带视频的帖子（首页等使用）
+    var allVideoPosts: [EP_PostModel] {
+        allPosts.filter { !$0.video.isEmpty }
+    }
+
+    /// 纯图片帖子（社区页：有 img、无 video）
+    var allImagePosts: [EP_PostModel] {
+        allPosts.filter { !$0.img.isEmpty && $0.video.isEmpty }
+    }
 
     /// 本地 test 用户（自己），可直接改属性后 `updateUser(testUser!)`
     var testUser: EP_UserModel? {
@@ -181,6 +192,8 @@ final class UserData {
             authorName: owner.name,
             authorAvatar: owner.avatar,
             coverImage: post.coverImage,
+            img: post.img,
+            video: post.video,
             content: post.content,
             isLiked: post.isLiked,
             likeCount: post.likeCount,
@@ -209,6 +222,8 @@ final class UserData {
             authorName: owner.name,
             authorAvatar: owner.avatar,
             coverImage: post.coverImage,
+            img: post.img,
+            video: post.video,
             content: post.content,
             isLiked: post.isLiked,
             likeCount: post.likeCount,
@@ -246,6 +261,7 @@ final class UserData {
 
     func reload() {
         database = Self.loadFromDisk(fileName: fileName) ?? database
+        syncSeedPostsMediaIfNeeded()
     }
 
     private static func loadFromDisk(fileName: String) -> EP_LocalDatabase? {
@@ -277,6 +293,40 @@ final class UserData {
         }
     }
 
+    /// 将 seed 中帖子的 img / video 与本地对齐（含你改 seed 后仍显示旧封面的情况）
+    private func syncSeedPostsMediaIfNeeded() {
+        var changed = false
+        for seedUser in Self.seedDatabase.users {
+            guard let userIndex = database.users.firstIndex(where: { $0.userId == seedUser.userId }) else {
+                continue
+            }
+            for seedPost in seedUser.posts {
+                if let postIndex = database.users[userIndex].posts.firstIndex(where: { $0.postId == seedPost.postId }) {
+                    var local = database.users[userIndex].posts[postIndex]
+                    var postChanged = false
+                    if local.video != seedPost.video {
+                        local.video = seedPost.video
+                        postChanged = true
+                    }
+                    if local.img != seedPost.img {
+                        local.img = seedPost.img
+                        postChanged = true
+                    }
+                    if postChanged {
+                        database.users[userIndex].posts[postIndex] = local
+                        changed = true
+                    }
+                } else if !seedPost.video.isEmpty || !seedPost.img.isEmpty {
+                    database.users[userIndex].posts.append(seedPost)
+                    changed = true
+                }
+            }
+        }
+        if changed {
+            save()
+        }
+    }
+
     // MARK: - 种子数据（可按需修改）
 
     /// 内置 test 用户，可在种子或 `ensureTestUserExists` 中使用
@@ -296,10 +346,10 @@ final class UserData {
             email: UserData.testAccountEmail,
             password: UserData.testAccountPassword,
             isBlock: false,
-            followCount: 22,
-            fanCount: 22,
-            coins: 123_123,
-            badge: 200,
+            followCount: 2,
+            fanCount: 4,
+            coins: 100,
+            badge: 50,
             posts: [
                 EP_PostModel(
                     postId: "p_test_01",
@@ -307,6 +357,7 @@ final class UserData {
                     authorName: "Test",
                     authorAvatar: "avatar_05",
                     coverImage: "post_temp",
+                    img: "friend_01",
                     content: "How's my outfit?How's my outfit?How's my outfit?",
                     isLiked: false,
                     likeCount: 8,
@@ -319,6 +370,7 @@ final class UserData {
                     authorName: "Test",
                     authorAvatar: "avatar_05",
                     coverImage: "post_temp",
+                    video: "video_02",
                     content: "My first post here.",
                     isLiked: true,
                     likeCount: 15,
@@ -345,6 +397,8 @@ final class UserData {
             authorName: String,
             authorAvatar: String,
             content: String,
+            img: String = "",
+            video: String = "",
             isLiked: Bool = false,
             likeCount: Int = 12,
             commentCount: Int = 1
@@ -355,6 +409,8 @@ final class UserData {
                 authorName: authorName,
                 authorAvatar: authorAvatar,
                 coverImage: "post_temp",
+                img: img,
+                video: video,
                 content: content,
                 isLiked: isLiked,
                 likeCount: likeCount,
@@ -367,7 +423,7 @@ final class UserData {
             UserData.buildTestUser(),
             EP_UserModel(
                 userId: "u001",
-                name: "Marceline",
+                name: "Marce",
                 avatar: "avatar_01",
                 isBlock: false,
                 followCount: 22,
@@ -378,18 +434,20 @@ final class UserData {
                     makePost(
                         postId: "p001",
                         userId: "u001",
-                        authorName: "Marceline",
+                        authorName: "Marce",
                         authorAvatar: "avatar_01",
                         content: "How's my outfit?How's my outfit?",
+                        img: "friend_04",
                         isLiked: true,
                         commentCount: 2
                     ),
                     makePost(
                         postId: "p002",
                         userId: "u001",
-                        authorName: "Marceline",
+                        authorName: "Marce",
                         authorAvatar: "avatar_01",
                         content: "Pink vibes today.",
+                        video: "video_04",
                         commentCount: 1
                     ),
                 ]
@@ -410,6 +468,7 @@ final class UserData {
                         authorName: "Street",
                         authorAvatar: "avatar_02",
                         content: "Street style check.",
+                        img: "friend_02",
                         isLiked: true,
                         commentCount: 3
                     ),
@@ -419,6 +478,7 @@ final class UserData {
                         authorName: "Street",
                         authorAvatar: "avatar_02",
                         content: "New cosplay wip.",
+                        video: "video_01",
                         commentCount: 1
                     ),
                 ]
@@ -426,7 +486,7 @@ final class UserData {
             EP_UserModel(
                 userId: "u003",
                 name: "Thom",
-                avatar: "avatar_03",
+                avatar: "avatar_04",
                 isBlock: false,
                 followCount: 10,
                 fanCount: 12,
@@ -437,8 +497,18 @@ final class UserData {
                         postId: "p005",
                         userId: "u003",
                         authorName: "Thom",
-                        authorAvatar: "avatar_03",
-                        content: "How's my outfit?How's my outfit?How's my outfit?",
+                        authorAvatar: "avatar_04",
+                        content: "Do you like my cosplay outfit?",
+                        img: "friend_03",
+                        commentCount: 2
+                    ),
+                    makePost(
+                        postId: "p008",
+                        userId: "u003",
+                        authorName: "Thom",
+                        authorAvatar: "avatar_04",
+                        content: "I'm about to go on stage, I'm so nervous!",
+                        video: "video_06",
                         commentCount: 2
                     ),
                 ]
@@ -446,7 +516,7 @@ final class UserData {
             EP_UserModel(
                 userId: "u004",
                 name: "Nana",
-                avatar: "avatar_04",
+                avatar: "avatar_03",
                 isBlock: false,
                 followCount: 30,
                 fanCount: 40,
@@ -458,15 +528,17 @@ final class UserData {
                         userId: "u004",
                         authorName: "Nana",
                         authorAvatar: "avatar_04",
-                        content: "Weekend mood.",
+                        content: "He's so handsome! I love him so much! Does anyone know who he is? I really want his contact information~",
+                        img: "friend_05",
                         commentCount: 1
                     ),
                     makePost(
                         postId: "p007",
                         userId: "u004",
                         authorName: "Nana",
-                        authorAvatar: "avatar_04",
+                        authorAvatar: "avatar_03",
                         content: "Thanks for all the likes!",
+                        video: "video_03",
                         isLiked: true,
                         commentCount: 2
                     ),

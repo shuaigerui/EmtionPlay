@@ -14,11 +14,31 @@ enum EP_ProfileTab {
 
 struct EP_ProfileHeaderModel {
     let coverImageName: String
+    /// 由帖子 img/video 解析的封面；优先于 coverImageName
+    let coverImage: UIImage?
     let avatarImageName: String
     let userName: String
     let friendsCount: Int
     let fanCount: Int
     var selectedTab: EP_ProfileTab
+
+    init(
+        coverImageName: String,
+        coverImage: UIImage? = nil,
+        avatarImageName: String,
+        userName: String,
+        friendsCount: Int,
+        fanCount: Int,
+        selectedTab: EP_ProfileTab
+    ) {
+        self.coverImageName = coverImageName
+        self.coverImage = coverImage
+        self.avatarImageName = avatarImageName
+        self.userName = userName
+        self.friendsCount = friendsCount
+        self.fanCount = fanCount
+        self.selectedTab = selectedTab
+    }
 
     static let preview = EP_ProfileHeaderModel(
         coverImageName: "post_temp",
@@ -158,7 +178,7 @@ final class EP_ProfileHeaderView: UIView {
     }
 
     func configure(with model: EP_ProfileHeaderModel) {
-        coverImageView.image = model.coverImageName.toImage
+        coverImageView.image = model.coverImage ?? model.coverImageName.toImage
         avatarImageView.image = model.avatarImageName.toImage
         nameLabel.text = model.userName
         friendsStatView.configure(count: model.friendsCount, title: "Friends")

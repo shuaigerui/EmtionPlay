@@ -9,17 +9,35 @@ import UIKit
 
 struct EP_PersonHeaderModel {
     let coverImageName: String
+    let coverImage: UIImage?
     let avatarImageName: String
     let userName: String
     let badgeImageName: String?
     let friendsCount: Int
     let fanCount: Int
 
+    init(
+        coverImageName: String,
+        coverImage: UIImage? = nil,
+        avatarImageName: String,
+        userName: String,
+        badgeImageName: String? = nil,
+        friendsCount: Int,
+        fanCount: Int
+    ) {
+        self.coverImageName = coverImageName
+        self.coverImage = coverImage
+        self.avatarImageName = avatarImageName
+        self.userName = userName
+        self.badgeImageName = badgeImageName
+        self.friendsCount = friendsCount
+        self.fanCount = fanCount
+    }
+
     static let preview = EP_PersonHeaderModel(
         coverImageName: "post_temp",
         avatarImageName: "home_top",
         userName: "StreetStreet",
-        badgeImageName: nil,
         friendsCount: 22,
         fanCount: 22
     )
@@ -28,6 +46,10 @@ struct EP_PersonHeaderModel {
 final class EP_PersonHeaderView: UIView {
 
     static let preferredHeight: CGFloat = 404
+
+    private enum Layout {
+        static let coverBottomRightRadius: CGFloat = 56
+    }
 
     var onMoreTapped: (() -> Void)?
     var onFriendsTapped: (() -> Void)?
@@ -38,7 +60,6 @@ final class EP_PersonHeaderView: UIView {
         backgroundColor = UIColor.color(hexString: "#FED9FA")
 
         addSubview(coverImageView)
-        addSubview(curvePanelView)
         addSubview(avatarImageView)
         addSubview(nameLabel)
         addSubview(badgeImageView)
@@ -50,11 +71,6 @@ final class EP_PersonHeaderView: UIView {
         coverImageView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
             make.bottom.equalTo(safeAreaLayoutGuide.snp.top).offset(180)
-        }
-
-        curvePanelView.snp.makeConstraints { make in
-            make.leading.trailing.bottom.equalToSuperview()
-            make.top.equalTo(safeAreaLayoutGuide.snp.top).offset(108)
         }
 
         moreButton.snp.makeConstraints { make in
@@ -122,11 +138,15 @@ final class EP_PersonHeaderView: UIView {
         super.layoutSubviews()
         let side = min(avatarImageView.bounds.width, avatarImageView.bounds.height)
         avatarImageView.layer.cornerRadius = side / 2
+
+        coverImageView.layer.cornerRadius = Layout.coverBottomRightRadius
+        coverImageView.layer.maskedCorners = [.layerMaxXMaxYCorner]
+        coverImageView.clipsToBounds = true
     }
 
     func configure(with model: EP_PersonHeaderModel) {
-        coverImageView.image = model.coverImageName.toImage
-        avatarImageView.image = model.avatarImageName.toImage
+        coverImageView.image = model.coverImage ?? model.coverImageName.toImage
+        avatarImageView.image = model.avatarImageName.toAvatarImage ?? model.avatarImageName.toImage
         nameLabel.text = model.userName
         if let badgeImageName = model.badgeImageName, let image = badgeImageName.toImage {
             badgeImageView.image = image
@@ -157,8 +177,6 @@ final class EP_PersonHeaderView: UIView {
         view.backgroundColor = "#E8E8E8".toColor
         return view
     }()
-
-    private let curvePanelView = EP_PersonCurvePanelView()
 
     private let moreButton: UIButton = {
         let button = UIButton(type: .custom)
@@ -199,50 +217,6 @@ final class EP_PersonHeaderView: UIView {
 
     private let friendsStatView = EP_PersonStatItemView()
     private let fanStatView = EP_PersonStatItemView()
-}
-
-// MARK: - Curve Panel
-
-private final class EP_PersonCurvePanelView: UIView {
-
-    override class var layerClass: AnyClass {
-        CAShapeLayer.self
-    }
-
-    private var shapeLayer: CAShapeLayer {
-        layer as! CAShapeLayer
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .clear
-        shapeLayer.fillColor = UIColor.color(hexString: "#FED9FA").cgColor
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        shapeLayer.path = curvedPath(in: bounds)
-    }
-
-    private func curvedPath(in rect: CGRect) -> CGPath {
-        let path = UIBezierPath()
-        let leftTopY = rect.height * 0.12
-        let rightTopY: CGFloat = 10
-        path.move(to: CGPoint(x: 0, y: leftTopY))
-        path.addCurve(
-            to: CGPoint(x: rect.width, y: rightTopY),
-            controlPoint1: CGPoint(x: rect.width * 0.38, y: 0),
-            controlPoint2: CGPoint(x: rect.width * 0.78, y: 2)
-        )
-        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
-        path.addLine(to: CGPoint(x: 0, y: rect.height))
-        path.close()
-        return path.cgPath
-    }
 }
 
 // MARK: - Stat Item

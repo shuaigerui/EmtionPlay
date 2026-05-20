@@ -10,6 +10,7 @@ import UIKit
 class EP_DetailHeaderView: UIView {
 
     var onLikeTapped: (() -> Void)?
+    var onCoverTapped: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -18,6 +19,7 @@ class EP_DetailHeaderView: UIView {
         coverImageView.addSubview(actionStack)
         coverImageView.addSubview(userInfoStack)
         coverImageView.addSubview(contentLabel)
+        coverImageView.addSubview(playView)
         addSubview(commentLabel)
 
         coverImageView.snp.makeConstraints { make in
@@ -63,8 +65,15 @@ class EP_DetailHeaderView: UIView {
             make.leading.equalTo(coverImageView)
             make.height.equalTo(31)
         }
+        
+        playView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+        }
 
         likeButton.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
+        playView.isUserInteractionEnabled = false
+        let coverTap = UITapGestureRecognizer(target: self, action: #selector(handleCoverTap))
+        coverImageView.addGestureRecognizer(coverTap)
     }
 
     required init?(coder: NSCoder) {
@@ -72,7 +81,8 @@ class EP_DetailHeaderView: UIView {
     }
 
     func configure(with item: EP_PostFeedItem) {
-        coverImageView.image = item.coverImageName.toImage
+        coverImageView.image = item.resolvedCoverImage ?? item.coverImageName.toImage
+        playView.isHidden = item.video.isEmpty
         avatarImageView.image = item.avatarImageName.toImage
         nameLabel.text = item.userName
         contentLabel.text = item.content
@@ -81,6 +91,10 @@ class EP_DetailHeaderView: UIView {
 
     @objc private func onLikeButtonTapped() {
         onLikeTapped?()
+    }
+
+    @objc private func handleCoverTap() {
+        onCoverTapped?()
     }
 
     private let coverImageView: UIImageView = {
@@ -123,6 +137,14 @@ class EP_DetailHeaderView: UIView {
         view.contentMode = .scaleAspectFill
         view.layer.cornerRadius = 18
         view.layer.masksToBounds = true
+        return view
+    }()
+    
+    private let playView: UIImageView = {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFill
+        view.image = "home_play".toImage
+        view.isHidden = true
         return view
     }()
 

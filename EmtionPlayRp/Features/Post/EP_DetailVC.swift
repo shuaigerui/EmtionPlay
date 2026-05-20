@@ -93,7 +93,15 @@ class EP_DetailVC: EP_BaseVC {
         header.onLikeTapped = { [weak self] in
             self?.togglePostLike()
         }
+        header.onCoverTapped = { [weak self] in
+            self?.openVideoPlayerIfNeeded()
+        }
         tableView.tableHeaderView = header
+    }
+
+    private func openVideoPlayerIfNeeded() {
+        guard !postItem.video.isEmpty else { return }
+        navigationController?.pushViewController(EP_VideoVC(item: postItem), animated: true)
     }
 
     private func updateTableHeaderLayoutIfNeeded() {

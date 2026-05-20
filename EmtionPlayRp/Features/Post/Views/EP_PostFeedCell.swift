@@ -8,11 +8,38 @@
 import UIKit
 
 struct EP_PostFeedItem {
+    let userId: String
     let coverImageName: String
+    let img: String
+    let video: String
     let avatarImageName: String
     let userName: String
     let content: String
     var isLiked: Bool
+
+    init(
+        userId: String = "",
+        coverImageName: String,
+        img: String = "",
+        video: String = "",
+        avatarImageName: String,
+        userName: String,
+        content: String,
+        isLiked: Bool
+    ) {
+        self.userId = userId
+        self.coverImageName = coverImageName
+        self.img = img
+        self.video = video
+        self.avatarImageName = avatarImageName
+        self.userName = userName
+        self.content = content
+        self.isLiked = isLiked
+    }
+
+    var resolvedCoverImage: UIImage? {
+        EP_PostMedia.coverImage(img: img, video: video, fallbackCover: coverImageName)
+    }
 }
 
 final class EP_PostFeedCell: UITableViewCell {
@@ -20,6 +47,7 @@ final class EP_PostFeedCell: UITableViewCell {
     static let reuseID = "EP_PostFeedCell"
 
     var onLikeTapped: (() -> Void)?
+    var onAvatarTapped: (() -> Void)?
 
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -72,6 +100,10 @@ final class EP_PostFeedCell: UITableViewCell {
         }
 
         likeButton.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
+
+        avatarImageView.isUserInteractionEnabled = true
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(onAvatarTap))
+        avatarImageView.addGestureRecognizer(avatarTap)
     }
 
     required init?(coder: NSCoder) {
@@ -79,8 +111,8 @@ final class EP_PostFeedCell: UITableViewCell {
     }
 
     func configure(with item: EP_PostFeedItem) {
-        coverImageView.image = item.coverImageName.toImage
-        avatarImageView.image = item.avatarImageName.toImage
+        coverImageView.image = item.resolvedCoverImage ?? item.coverImageName.toImage
+        avatarImageView.image = item.avatarImageName.toAvatarImage ?? item.avatarImageName.toImage
         nameLabel.text = item.userName
         contentLabel.text = item.content
         likeButton.isSelected = item.isLiked
@@ -88,6 +120,10 @@ final class EP_PostFeedCell: UITableViewCell {
 
     @objc private func onLikeButtonTapped() {
         onLikeTapped?()
+    }
+
+    @objc private func onAvatarTap() {
+        onAvatarTapped?()
     }
 
     private let coverImageView: UIImageView = {

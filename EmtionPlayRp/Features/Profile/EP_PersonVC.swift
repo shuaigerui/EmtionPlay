@@ -26,6 +26,20 @@ class EP_PersonVC: EP_BaseVC {
         hidesBottomBarWhenPushed = true
     }
 
+    convenience init(user: EP_UserModel) {
+        self.init(headerModel: user.personHeaderModel, feedItems: user.postFeedItems)
+    }
+
+    /// 根据 userId 打开对方个人主页
+    static func show(from viewController: UIViewController, userId: String) {
+        guard !userId.isEmpty,
+              let user = UserData.shared.user(userId: userId) else { return }
+        viewController.navigationController?.pushViewController(
+            EP_PersonVC(user: user),
+            animated: true
+        )
+    }
+
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -174,6 +188,10 @@ extension EP_PersonVC: UITableViewDataSource, UITableViewDelegate {
         cell.configure(with: item)
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath.row)
+        }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            EP_PersonVC.show(from: self, userId: item.userId)
         }
         return cell
     }

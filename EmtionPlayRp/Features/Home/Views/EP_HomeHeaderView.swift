@@ -9,6 +9,7 @@ import UIKit
 
 protocol EP_HomeHeaderViewDelegate: AnyObject {
     func homeHeaderViewDidTapOutfit(_ headerView: EP_HomeHeaderView)
+    func homeHeaderViewDidPuhlish(_ headerView: EP_HomeHeaderView)
 }
 
 class EP_HomeHeaderView: UICollectionReusableView {
@@ -26,8 +27,12 @@ class EP_HomeHeaderView: UICollectionReusableView {
         addSubview(pushButton)
 
         outButton.isUserInteractionEnabled = true
-        let tap = UITapGestureRecognizer(target: self, action: #selector(onOutButtonTapped))
-        outButton.addGestureRecognizer(tap)
+        let outTap = UITapGestureRecognizer(target: self, action: #selector(onOutButtonTapped))
+        outButton.addGestureRecognizer(outTap)
+        
+        pushButton.isUserInteractionEnabled = true
+        let pushTap = UITapGestureRecognizer(target: self, action: #selector(onPushButtonTapped))
+        pushButton.addGestureRecognizer(pushTap)
 
         
         topView.snp.makeConstraints { make in
@@ -66,24 +71,12 @@ class EP_HomeHeaderView: UICollectionReusableView {
         view.contentMode = .scaleAspectFill
         return view
     }()
-//    private let outButton: UIButton = {
-//        let v = UIButton(type: .custom)
-//        v.setImage("home_outfit".toImage, for: .normal)
-//        v.imageView?.contentMode = .scaleAspectFill
-//        return v
-//    }()
     private let outButton: UIImageView = {
         let view = UIImageView()
         view.image = "home_outfit".toImage
         view.contentMode = .scaleAspectFill
         return view
     }()
-//    private let pushButton: UIButton = {
-//        let v = UIButton(type: .custom)
-//        v.setImage("home_push".toImage, for: .normal)
-//        v.imageView?.contentMode = .scaleAspectFill
-//        return v
-//    }()
     private let pushButton: UIImageView = {
         let view = UIImageView()
         view.image = "home_push".toImage
@@ -93,6 +86,10 @@ class EP_HomeHeaderView: UICollectionReusableView {
     
     @objc private func onOutButtonTapped() {
         delegate?.homeHeaderViewDidTapOutfit(self)
+    }
+    
+    @objc private func onPushButtonTapped() {
+        delegate?.homeHeaderViewDidPuhlish(self)
     }
 
     required init?(coder: NSCoder) {

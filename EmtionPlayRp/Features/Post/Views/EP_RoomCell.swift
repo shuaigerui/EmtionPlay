@@ -86,7 +86,7 @@ final class EP_RoomCell: UICollectionViewCell {
             avatarView.layer.cornerRadius = Layout.avatarSize / 2
             avatarView.layer.borderWidth = 2
             avatarView.layer.borderColor = UIColor.white.cgColor
-            avatarView.image = name.toImage
+            avatarView.image = name.toAvatarImage ?? name.toImage
             avatarView.snp.makeConstraints { make in
                 make.size.equalTo(Layout.avatarSize)
             }

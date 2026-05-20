@@ -9,30 +9,15 @@ import UIKit
 
 class EP_PostVC: EP_BaseVC {
 
-    private var feedItems: [EP_PostFeedItem] = [
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "The non",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: false
-        ),
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "The non",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: true
-        ),
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "Wren",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: false
-        ),
-    ]
+    private var imagePosts: [EP_PostModel] = []
+    private var feedItems: [EP_PostFeedItem] = []
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -41,6 +26,19 @@ class EP_PostVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
+    }
+    
+    private func loadData() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            UserData.shared.reload()
+            let posts = UserData.shared.allImagePosts
+            let items = posts.map(\.feedItem)
+            DispatchQueue.main.async {
+                self?.imagePosts = posts
+                self?.feedItems = items
+                self?.tableView.reloadData()
+            }
+        }
     }
 
     private func setupUI() {
@@ -90,10 +88,16 @@ class EP_PostVC: EP_BaseVC {
         releaseButton.addTarget(self, action: #selector(clickReleaseButton), for: .touchUpInside)
         let aiTap = UITapGestureRecognizer(target: self, action: #selector(onAIButtonTapped))
         aiButton.addGestureRecognizer(aiTap)
+        let cosTap = UITapGestureRecognizer(target: self, action: #selector(onCosButtonTapped))
+        cosplayButton.addGestureRecognizer(cosTap)
     }
-
+    
     @objc private func onAIButtonTapped() {
         navigationController?.pushViewController(EP_AIRoomVC(), animated: true)
+    }
+    
+    @objc private func onCosButtonTapped() {
+        navigationController?.pushViewController(EP_RoomVC(), animated: true)
     }
     
     @objc private func clickReleaseButton() {
@@ -170,13 +174,19 @@ extension EP_PostVC: UITableViewDataSource, UITableViewDelegate {
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath.row)
         }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            EP_PersonVC.show(from: self, userId: item.userId)
+        }
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        guard imagePosts.indices.contains(indexPath.row) else { return }
+        let post = imagePosts[indexPath.row]
         navigationController?.pushViewController(
-            EP_DetailVC(item: feedItems[indexPath.row]),
+            EP_DetailVC(item: post.feedItem, comments: post.detailCommentItems),
             animated: true
         )
     }

@@ -49,6 +49,29 @@ enum SS_BundleResourceMedia {
         return nil
     }
 
+    /// `Resource/Chat` 下的聊天室封面（如 `chat_01.png`）。
+    static func chatImageURL(baseName: String) -> URL? {
+        firstURL(
+            baseName: baseName,
+            subdirectories: ["Resource/Chat", "Chat"],
+            extensions: ["jpg", "jpeg", "png"]
+        )
+    }
+
+    static func chatImage(baseName: String) -> UIImage? {
+        guard let url = chatImageURL(baseName: baseName) else { return nil }
+        return uiImage(fileURL: url)
+    }
+
+    /// `Resource/Friend` 下的朋友圈图片（如 `friend_01.png`）。
+    static func friendImageURL(baseName: String) -> URL? {
+        firstURL(
+            baseName: baseName,
+            subdirectories: ["Resource/Friend", "Friend"],
+            extensions: ["jpg", "jpeg", "png"]
+        )
+    }
+
     /// `Resource/Post` 下的静态图（如 `post_07.jpg` → baseName `post_07`）。
     static func postImageURL(baseName: String) -> URL? {
         firstURL(

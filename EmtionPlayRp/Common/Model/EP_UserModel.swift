@@ -79,6 +79,28 @@ struct EP_UserModel: Codable, Equatable {
 
 extension EP_UserModel {
 
+    var personHeaderModel: EP_PersonHeaderModel {
+        let firstPost = posts.first
+        let coverName: String = {
+            guard let post = firstPost else { return "post_temp" }
+            if !post.img.isEmpty { return post.img }
+            return post.coverImage
+        }()
+        return EP_PersonHeaderModel(
+            coverImageName: coverName,
+            coverImage: firstPost.flatMap { EP_PostMedia.coverImage(for: $0) },
+            avatarImageName: avatar,
+            userName: name,
+            badgeImageName: nil,
+            friendsCount: followCount,
+            fanCount: fanCount
+        )
+    }
+
+    var postFeedItems: [EP_PostFeedItem] {
+        posts.map(\.feedItem)
+    }
+
     /// 更新昵称/头像后，同步该用户下所有帖子的作者展示字段
     mutating func syncPostsAuthorInfo() {
         for index in posts.indices {

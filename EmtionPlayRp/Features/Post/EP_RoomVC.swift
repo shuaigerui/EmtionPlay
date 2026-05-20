@@ -16,42 +16,45 @@ class EP_RoomVC: EP_BaseVC {
         static let collectionTopSpacing: CGFloat = 16
     }
 
-    private let rooms: [EP_RoomItem] = [
+    private let rooms: [EP_RoomItem] = EP_RoomVC.defaultRooms
+
+    /// 聊天室列表（封面 `Resource/Chat/chat_01` … `chat_06`）
+    static let defaultRooms: [EP_RoomItem] = [
         EP_RoomItem(
             roomId: "r001",
-            coverImageName: "post_temp",
+            coverImageName: "chat_01",
             name: "Cosplay Fun",
-            memberAvatarImageNames: ["home_top", "home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_01", "avatar_02", "avatar_03"]
         ),
         EP_RoomItem(
             roomId: "r002",
-            coverImageName: "post_temp",
+            coverImageName: "chat_02",
             name: "Cos Talk Zone",
-            memberAvatarImageNames: ["home_top", "home_top", "home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_02", "avatar_03", "avatar_04"]
         ),
         EP_RoomItem(
             roomId: "r003",
-            coverImageName: "post_temp",
+            coverImageName: "chat_03",
             name: "Cos Corner",
-            memberAvatarImageNames: ["home_top", "home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_01", "avatar_04", "avatar_05"]
         ),
         EP_RoomItem(
             roomId: "r004",
-            coverImageName: "post_temp",
+            coverImageName: "chat_04",
             name: "Fandom Hangout",
-            memberAvatarImageNames: ["home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_03", "avatar_06"]
         ),
         EP_RoomItem(
             roomId: "r005",
-            coverImageName: "post_temp",
+            coverImageName: "chat_05",
             name: "Cos Corner",
-            memberAvatarImageNames: ["home_top", "home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_02", "avatar_05", "avatar_07"]
         ),
         EP_RoomItem(
             roomId: "r006",
-            coverImageName: "post_temp",
+            coverImageName: "chat_06",
             name: "Item Chat",
-            memberAvatarImageNames: ["home_top", "home_top", "home_top", "home_top"]
+            memberAvatarImageNames: ["avatar_04", "avatar_08", "avatar_09", "avatar_10"]
         ),
     ]
 
@@ -167,7 +170,10 @@ extension EP_RoomVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
         cell.configure(with: room)
         cell.onJoinTapped = { [weak self] in
             self?.navigationController?.pushViewController(
-                EP_ChatRoomVC(peerName: room.name, peerAvatarImageName: "home_top"),
+                EP_ChatRoomVC(
+                    peerName: room.name,
+                    peerAvatarImageName: room.memberAvatarImageNames.first ?? "avatar_01"
+                ),
                 animated: true
             )
         }

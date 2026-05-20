@@ -8,9 +8,35 @@
 import UIKit
 
 struct EP_HomeFeedItem {
+    let postId: String
+    let coverImage: UIImage?
     let coverImageName: String
     let avatarImageName: String
     let userName: String
+
+    init(
+        postId: String,
+        coverImage: UIImage? = nil,
+        coverImageName: String = "",
+        avatarImageName: String,
+        userName: String
+    ) {
+        self.postId = postId
+        self.coverImage = coverImage
+        self.coverImageName = coverImageName
+        self.avatarImageName = avatarImageName
+        self.userName = userName
+    }
+
+    init(post: EP_PostModel, coverImage: UIImage?) {
+        self.init(
+            postId: post.postId,
+            coverImage: coverImage,
+            coverImageName: post.coverImage,
+            avatarImageName: post.authorAvatar,
+            userName: post.authorName
+        )
+    }
 }
 
 final class EP_HomeCell: UICollectionViewCell {
@@ -59,7 +85,7 @@ final class EP_HomeCell: UICollectionViewCell {
     }
 
     func configure(with item: EP_HomeFeedItem) {
-        coverImageView.image = item.coverImageName.toImage
+        coverImageView.image = item.coverImage ?? item.coverImageName.toImage
         avatarImageView.image = item.avatarImageName.toImage
         nameLabel.text = item.userName
     }

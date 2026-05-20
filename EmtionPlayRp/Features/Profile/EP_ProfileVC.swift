@@ -16,32 +16,8 @@ class EP_ProfileVC: EP_BaseVC {
     private var headerModel = EP_ProfileHeaderModel.preview
     private var selectedTab: EP_ProfileTab = .release
 
-    private var releaseItems: [EP_PostFeedItem] = [
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "The non",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: false
-        ),
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "The non",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: true
-        ),
-    ]
-
-    private var likeItems: [EP_PostFeedItem] = [
-        EP_PostFeedItem(
-            coverImageName: "post_temp",
-            avatarImageName: "home_top",
-            userName: "Wren",
-            content: "How's my outfit?How's my outfit?How's my outfit?",
-            isLiked: true
-        ),
-    ]
+    private var releaseItems: [EP_PostFeedItem] = []
+    private var likeItems: [EP_PostFeedItem] = []
 
     private var activeItems: [EP_PostFeedItem] {
         get { selectedTab == .release ? releaseItems : likeItems }
@@ -96,6 +72,12 @@ class EP_ProfileVC: EP_BaseVC {
         }
         return header
     }()
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -103,6 +85,27 @@ class EP_ProfileVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupTableHeader()
+    }
+    
+    private func loadData() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let user = EP_CurrentUser.shared.user else { return }
+
+        let firstPost = user.posts.first
+        headerModel = EP_ProfileHeaderModel(
+            coverImageName: firstPost?.coverImage ?? "post_temp",
+            coverImage: firstPost.flatMap { EP_PostMedia.coverImage(for: $0) },
+            avatarImageName: user.avatar,
+            userName: user.name,
+            friendsCount: user.followCount,
+            fanCount: user.fanCount,
+            selectedTab: selectedTab
+        )
+        profileHeaderView.configure(with: headerModel)
+
+        releaseItems = user.posts.map(\.feedItem)
+        likeItems = user.posts.filter(\.isLiked).map(\.feedItem)
+        tableView.reloadData()
     }
 
     private func setupUI() {
@@ -167,6 +170,10 @@ extension EP_ProfileVC: UITableViewDataSource, UITableViewDelegate {
         cell.configure(with: item)
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath.row)
+        }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            EP_PersonVC.show(from: self, userId: item.userId)
         }
         return cell
     }

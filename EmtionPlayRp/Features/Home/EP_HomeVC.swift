@@ -18,14 +18,13 @@ class EP_HomeVC: EP_BaseVC {
         static let cellAspectRatio: CGFloat = 1.32
     }
 
-    private let feedItems: [EP_HomeFeedItem] = [
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Wren"),
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Milo"),
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Luna"),
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Nova"),
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Iris"),
-        EP_HomeFeedItem(coverImageName: "home_top", avatarImageName: "home_top", userName: "Kai"),
-    ]
+    private var feedItems: [EP_HomeFeedItem] = []
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,6 +35,23 @@ class EP_HomeVC: EP_BaseVC {
         setupConstraints()
     }
 
+    private func loadData() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            UserData.shared.reload()
+            let videoPosts = UserData.shared.allVideoPosts
+            let items: [EP_HomeFeedItem] = videoPosts.map { post in
+                let cover = EP_PostMedia.coverImage(for: post)
+                    ?? post.coverImage.toImage
+                    ?? UIImage.ep_named("post_temp")
+                return EP_HomeFeedItem(post: post, coverImage: cover)
+            }
+            DispatchQueue.main.async {
+                self?.feedItems = items
+                self?.collectionView.reloadData()
+            }
+        }
+    }
+    
     private func setupUI() {
         view.addSubview(bgV)
         view.addSubview(collectionView)
@@ -135,6 +151,16 @@ extension EP_HomeVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
         }
         return header
     }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let homeItem = feedItems[indexPath.item]
+        guard let post = UserData.shared.post(postId: homeItem.postId) else { return }
+        let detailVC = EP_DetailVC(
+            item: post.feedItem,
+            comments: post.detailCommentItems
+        )
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
 
     func collectionView(
         _ collectionView: UICollectionView,
@@ -156,8 +182,12 @@ extension EP_HomeVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
 // MARK: - EP_HomeHeaderViewDelegate
 
 extension EP_HomeVC: EP_HomeHeaderViewDelegate {
-
+    
     func homeHeaderViewDidTapOutfit(_ headerView: EP_HomeHeaderView) {
         navigationController?.pushViewController(EP_ChallengeVC(), animated: true)
+    }
+    
+    func homeHeaderViewDidPuhlish(_ headerView: EP_HomeHeaderView) {
+        navigationController?.pushViewController(EP_ReleaseVC(), animated: true)
     }
 }
