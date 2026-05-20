@@ -60,7 +60,7 @@ class EP_ProfileVC: EP_BaseVC {
                 x: 0,
                 y: 0,
                 width: UIScreen.main.bounds.width,
-                height: EP_ProfileHeaderView.preferredHeight
+                height: 610
             )
         )
         header.configure(with: headerModel)
@@ -73,6 +73,20 @@ class EP_ProfileVC: EP_BaseVC {
         header.onShopTapped = { [weak self] in
             self?.navigationController?.pushViewController(EP_ShopVC(), animated: true)
         }
+        header.onEditTapped = { [weak self] in
+            guard let self else { return }
+            let vc = EP_EditVC(
+                avatarImageName: headerModel.avatarImageName,
+                nickname: headerModel.userName
+            )
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+        header.onFriendsTapped = { [weak self] in
+            self?.navigationController?.pushViewController(EP_UserListVC(mode: .follow), animated: true)
+        }
+        header.onFanTapped = { [weak self] in
+            self?.navigationController?.pushViewController(EP_UserListVC(mode: .fan), animated: true)
+        }
         return header
     }()
 
@@ -82,11 +96,6 @@ class EP_ProfileVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupTableHeader()
-    }
-
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        updateTableHeaderLayoutIfNeeded()
     }
 
     private func setupUI() {
@@ -101,15 +110,6 @@ class EP_ProfileVC: EP_BaseVC {
 
     private func setupTableHeader() {
         tableView.tableHeaderView = profileHeaderView
-    }
-
-    private func updateTableHeaderLayoutIfNeeded() {
-        guard let header = tableView.tableHeaderView else { return }
-        let width = tableView.bounds.width
-        let height = EP_ProfileHeaderView.preferredHeight
-        guard width > 0, header.frame.width != width || header.frame.height != height else { return }
-        header.frame = CGRect(x: 0, y: 0, width: width, height: height)
-        tableView.tableHeaderView = header
     }
 
     private func switchTab(_ tab: EP_ProfileTab) {

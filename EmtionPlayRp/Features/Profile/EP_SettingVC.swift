@@ -18,20 +18,13 @@ enum SettingRowType: CaseIterable {
 
     var imageName: String {
         switch self {
-        case .posts:
-            return "setting_posts"
-        case .contact:
-            return "setting_contact"
-        case .policy:
-            return "setting_policy"
-        case .guide:
-            return "setting_guide"
-        case .blacklist:
-            return "setting_black"
-        case .logout:
-            return "setting_out"
-        case .deleteAccount:
-            return "setting_del"
+        case .posts: return "setting_posts"
+        case .contact: return "setting_contact"
+        case .policy: return "setting_policy"
+        case .guide: return "setting_guide"
+        case .blacklist: return "setting_black"
+        case .logout: return "setting_out"
+        case .deleteAccount: return "setting_del"
         }
     }
 }
@@ -41,10 +34,23 @@ class EP_SettingVC: EP_BaseVC {
     private enum Layout {
         static let horizontalInset: CGFloat = 16
         static let tableTopSpacing: CGFloat = 24
-        static let rowSpacing: CGFloat = 10
+        static let rowSpacing: CGFloat = 14
+        /// 设计稿单行卡片图高度（@3x 1029×201 → 343×67pt）
+        static let rowImageHeight: CGFloat = 67
+        static var rowHeight: CGFloat { rowImageHeight + rowSpacing }
     }
 
-    fileprivate static let rowSpacing = Layout.rowSpacing
+    private var tableHeightConstraint: Constraint?
+
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        hidesBottomBarWhenPushed = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     private let rows = SettingRowType.allCases
 
@@ -56,13 +62,39 @@ class EP_SettingVC: EP_BaseVC {
         setupEvents()
     }
 
-    func setupUI() {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateTableMetricsIfNeeded()
+    }
+
+    private func updateTableMetricsIfNeeded() {
+        let width = view.bounds.width - Layout.horizontalInset * 2
+        guard width > 0 else { return }
+
+        let rowHeight = Self.rowHeight(forTableWidth: width)
+        guard tableView.rowHeight != rowHeight else { return }
+
+        tableView.rowHeight = rowHeight
+        tableView.estimatedRowHeight = rowHeight
+        tableHeightConstraint?.update(offset: rowHeight * CGFloat(rows.count))
+        tableView.reloadData()
+    }
+
+    private static func rowHeight(forTableWidth tableWidth: CGFloat) -> CGFloat {
+        guard let image = SettingRowType.posts.imageName.toImage, image.size.width > 0 else {
+            return Layout.rowHeight
+        }
+        let imageHeight = tableWidth * image.size.height / image.size.width
+        return imageHeight + Layout.rowSpacing
+    }
+
+    private func setupUI() {
         view.addSubview(backButton)
         view.addSubview(titleView)
         view.addSubview(tableView)
     }
 
-    func setupConstraints() {
+    private func setupConstraints() {
         backButton.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(10)
             make.top.equalTo(view.safeAreaLayoutGuide)
@@ -77,22 +109,16 @@ class EP_SettingVC: EP_BaseVC {
         tableView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
             make.top.equalTo(titleView.snp.bottom).offset(Layout.tableTopSpacing)
-            make.bottom.equalTo(view.safeAreaLayoutGuide)
+            tableHeightConstraint = make.height.equalTo(Layout.rowHeight * CGFloat(rows.count)).constraint
         }
     }
 
-    func setupEvents() {
+    private func setupEvents() {
         backButton.addTarget(self, action: #selector(clickBackButton), for: .touchUpInside)
     }
 
     @objc private func clickBackButton() {
         navigationController?.popViewController(animated: true)
-    }
-
-    private func rowHeight(for imageName: String, tableWidth: CGFloat) -> CGFloat {
-        guard let image = imageName.toImage, image.size.width > 0 else { return 64 }
-        let imageHeight = tableWidth * image.size.height / image.size.width
-        return imageHeight + Layout.rowSpacing
     }
 
     private let backButton: UIButton = {
@@ -113,6 +139,16 @@ class EP_SettingVC: EP_BaseVC {
         tableView.backgroundColor = .clear
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false
+        tableView.isScrollEnabled = false
+        tableView.bounces = false
+        tableView.contentInsetAdjustmentBehavior = .never
+        tableView.directionalLayoutMargins = .zero
+        tableView.cellLayoutMarginsFollowReadableWidth = false
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
+        tableView.rowHeight = Layout.rowHeight
+        tableView.estimatedRowHeight = Layout.rowHeight
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(EP_SettingImageCell.self, forCellReuseIdentifier: EP_SettingImageCell.reuseID)
@@ -135,20 +171,26 @@ extension EP_SettingVC: UITableViewDataSource, UITableViewDelegate {
         ) as? EP_SettingImageCell else {
             return UITableViewCell()
         }
-        cell.configure(imageName: rows[indexPath.row].imageName)
+        let tableWidth = tableView.bounds.width > 0
+            ? tableView.bounds.width
+            : view.bounds.width - Layout.horizontalInset * 2
+        cell.configure(imageName: rows[indexPath.row].imageName, tableWidth: tableWidth)
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        let tableWidth = tableView.bounds.width > 0
-            ? tableView.bounds.width
-            : UIScreen.main.bounds.width - Layout.horizontalInset * 2
-        return rowHeight(for: rows[indexPath.row].imageName, tableWidth: tableWidth)
+        let width = tableView.bounds.width
+        return Self.rowHeight(forTableWidth: width > 0 ? width : view.bounds.width - Layout.horizontalInset * 2)
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        // TODO: Handle row action for rows[indexPath.row]
+        switch rows[indexPath.row] {
+        case .blacklist:
+            navigationController?.pushViewController(EP_UserListVC(mode: .black), animated: true)
+        default:
+            break
+        }
     }
 }
 
@@ -158,30 +200,48 @@ private final class EP_SettingImageCell: UITableViewCell {
 
     static let reuseID = "EP_SettingImageCell"
 
+    private var imageHeightConstraint: Constraint?
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
+
+        layoutMargins = .zero
+        contentView.layoutMargins = .zero
+        preservesSuperviewLayoutMargins = false
+        contentView.preservesSuperviewLayoutMargins = false
+        separatorInset = .zero
+
         contentView.addSubview(rowImageView)
         rowImageView.snp.makeConstraints { make in
-            make.top.equalToSuperview()
-            make.leading.trailing.equalToSuperview()
-            make.bottom.equalToSuperview().inset(EP_SettingVC.rowSpacing)
+            make.top.leading.trailing.equalToSuperview()
+            imageHeightConstraint = make.height.equalTo(67).constraint
         }
+        rowImageView.setContentHuggingPriority(.required, for: .vertical)
+        rowImageView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(imageName: String) {
-        rowImageView.image = imageName.toImage
+    func configure(imageName: String, tableWidth: CGFloat) {
+        let image = imageName.toImage
+        rowImageView.image = image
+        let imageHeight: CGFloat
+        if let image, image.size.width > 0 {
+            imageHeight = tableWidth * image.size.height / image.size.width
+        } else {
+            imageHeight = 67
+        }
+        imageHeightConstraint?.update(offset: imageHeight)
     }
 
     private let rowImageView: UIImageView = {
         let view = UIImageView()
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         view.clipsToBounds = true
         return view
     }()

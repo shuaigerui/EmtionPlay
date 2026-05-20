@@ -21,7 +21,7 @@ struct EP_ProfileHeaderModel {
     var selectedTab: EP_ProfileTab
 
     static let preview = EP_ProfileHeaderModel(
-        coverImageName: "home_top",
+        coverImageName: "post_temp",
         avatarImageName: "home_top",
         userName: "Marceline",
         friendsCount: 22,
@@ -37,28 +37,14 @@ final class EP_ProfileHeaderView: UIView {
     var onSettingTapped: (() -> Void)?
     var onShopTapped: (() -> Void)?
     var onAchievementTapped: (() -> Void)?
+    var onFriendsTapped: (() -> Void)?
+    var onFanTapped: (() -> Void)?
 
     private var selectedTab: EP_ProfileTab = .release
 
-    private enum Layout {
-        static let horizontalInset: CGFloat = 16
-        static let coverHeight: CGFloat = 220
-        static let avatarSize: CGFloat = 96
-        static let avatarOverlap: CGFloat = 24
-        static let settingButtonSize: CGFloat = 32
-        static let editButtonSize: CGFloat = 24
-        static let statsHeight: CGFloat = 72
-        static let statsCornerRadius: CGFloat = 16
-        static let actionButtonHeight: CGFloat = 103
-        static let actionButtonSpacing: CGFloat = 10
-        static let sectionSpacing: CGFloat = 16
-        static let tabSpacing: CGFloat = 24
-        static let bottomInset: CGFloat = 12
-    }
-
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = UIColor.color(hexString: "#F8D4E8")
+        backgroundColor = UIColor.color(hexString: "#FED9FA")
 
         addSubview(coverImageView)
         addSubview(settingButton)
@@ -74,37 +60,42 @@ final class EP_ProfileHeaderView: UIView {
 
         coverImageView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
-            make.height.equalTo(Layout.coverHeight)
+            make.bottom.equalTo(safeAreaLayoutGuide.snp.top).offset(180)
         }
 
         settingButton.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalToSuperview().offset(8)
-            make.size.equalTo(Layout.settingButtonSize)
+            make.trailing.equalToSuperview().offset(-16)
+            make.top.equalTo(safeAreaLayoutGuide).offset(16)
+            make.size.equalTo(32)
         }
 
         avatarImageView.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(22)
-            make.top.equalTo(coverImageView.snp.bottom).offset(-Layout.avatarOverlap)
-            make.size.equalTo(Layout.avatarSize)
+            make.leading.equalToSuperview().offset(18)
+            make.top.equalTo(settingButton.snp.bottom).offset(79)
+            make.width.height.equalTo(112)
+            make.width.equalTo(avatarImageView.snp.height)
         }
+        avatarImageView.setContentHuggingPriority(.required, for: .horizontal)
+        avatarImageView.setContentHuggingPriority(.required, for: .vertical)
+        avatarImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        avatarImageView.setContentCompressionResistancePriority(.required, for: .vertical)
 
         editButton.snp.makeConstraints { make in
-            make.leading.equalTo(nameLabel.snp.trailing).offset(6)
-            make.centerY.equalTo(nameLabel)
-            make.size.equalTo(Layout.editButtonSize)
+            make.trailing.equalToSuperview().offset(-16)
+            make.top.equalTo(settingButton.snp.bottom).offset(135)
+            make.size.equalTo(32)
         }
 
         nameLabel.snp.makeConstraints { make in
-            make.leading.equalTo(avatarImageView.snp.trailing).offset(12)
-            make.centerY.equalTo(avatarImageView).offset(8)
+            make.leading.equalToSuperview().offset(140)
+            make.centerY.equalTo(editButton).offset(8)
             make.trailing.lessThanOrEqualTo(editButton.snp.leading).offset(-4)
         }
 
         statsCardView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalTo(avatarImageView.snp.bottom).offset(Layout.sectionSpacing)
-            make.height.equalTo(Layout.statsHeight)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.top.equalTo(avatarImageView.snp.bottom).offset(17)
+            make.height.equalTo(76)
         }
 
         friendsStatView.snp.makeConstraints { make in
@@ -118,36 +109,52 @@ final class EP_ProfileHeaderView: UIView {
         }
 
         shopButton.snp.makeConstraints { make in
-            make.leading.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalTo(statsCardView.snp.bottom).offset(Layout.sectionSpacing)
-            make.height.equalTo(Layout.actionButtonHeight)
-            make.trailing.equalTo(snp.centerX).offset(-Layout.actionButtonSpacing / 2)
+            make.leading.equalToSuperview().inset(16)
+            make.top.equalTo(statsCardView.snp.bottom).offset(25)
+            make.height.equalTo(103)
+            make.trailing.equalTo(snp.centerX).offset(-3.5)
         }
 
         achievementButton.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.width.height.equalTo(shopButton)
-            make.leading.equalTo(snp.centerX).offset(Layout.actionButtonSpacing / 2)
+            make.trailing.equalToSuperview().inset(16)
+            make.centerY.width.height.equalTo(shopButton)
+            make.leading.equalTo(snp.centerX).offset(3.5)
         }
 
         tabStack.snp.makeConstraints { make in
-            make.leading.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalTo(shopButton.snp.bottom).offset(Layout.sectionSpacing)
-            make.bottom.equalToSuperview().inset(Layout.bottomInset)
+            make.leading.equalToSuperview().inset(16)
+            make.top.equalTo(shopButton.snp.bottom).offset(25)
+            make.height.equalTo(44)
         }
 
         releaseTabButton.addTarget(self, action: #selector(onReleaseTabTapped), for: .touchUpInside)
         likeTabButton.addTarget(self, action: #selector(onLikeTabTapped), for: .touchUpInside)
         editButton.addTarget(self, action: #selector(onEditButtonTapped), for: .touchUpInside)
         settingButton.addTarget(self, action: #selector(onSettingButtonTapped), for: .touchUpInside)
-        shopButton.addTarget(self, action: #selector(onShopButtonTapped), for: .touchUpInside)
-        achievementButton.addTarget(self, action: #selector(onAchievementButtonTapped), for: .touchUpInside)
+        let shopTap = UITapGestureRecognizer(target: self, action: #selector(onShopButtonTapped))
+        shopButton.addGestureRecognizer(shopTap)
+        let achieTap = UITapGestureRecognizer(target: self, action: #selector(onAchievementButtonTapped))
+        achievementButton.addGestureRecognizer(achieTap)
+        friendsStatView.isUserInteractionEnabled = true
+        fanStatView.isUserInteractionEnabled = true
+        friendsStatView.addGestureRecognizer(
+            UITapGestureRecognizer(target: self, action: #selector(onFriendsStatTapped))
+        )
+        fanStatView.addGestureRecognizer(
+            UITapGestureRecognizer(target: self, action: #selector(onFanStatTapped))
+        )
 
         updateTabAppearance()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let side = min(avatarImageView.bounds.width, avatarImageView.bounds.height)
+        avatarImageView.layer.cornerRadius = side / 2
     }
 
     func configure(with model: EP_ProfileHeaderModel) {
@@ -158,19 +165,6 @@ final class EP_ProfileHeaderView: UIView {
         fanStatView.configure(count: model.fanCount, title: "Fan")
         selectedTab = model.selectedTab
         updateTabAppearance()
-    }
-
-    static var preferredHeight: CGFloat {
-        Layout.coverHeight
-            - Layout.avatarOverlap
-            + Layout.avatarSize
-            + Layout.sectionSpacing
-            + Layout.statsHeight
-            + Layout.sectionSpacing
-            + Layout.actionButtonHeight
-            + Layout.sectionSpacing
-            + 32
-            + Layout.bottomInset
     }
 
     @objc private func onReleaseTabTapped() {
@@ -201,6 +195,14 @@ final class EP_ProfileHeaderView: UIView {
 
     @objc private func onAchievementButtonTapped() {
         onAchievementTapped?()
+    }
+
+    @objc private func onFriendsStatTapped() {
+        onFriendsTapped?()
+    }
+
+    @objc private func onFanStatTapped() {
+        onFanTapped?()
     }
 
     private func updateTabAppearance() {
@@ -240,15 +242,14 @@ final class EP_ProfileHeaderView: UIView {
         let view = UIImageView()
         view.contentMode = .scaleAspectFill
         view.clipsToBounds = true
-        view.layer.cornerRadius = Layout.avatarSize / 2
-        view.layer.borderWidth = 4
+        view.layer.borderWidth = 3
         view.layer.borderColor = UIColor.white.cgColor
         return view
     }()
 
     private let nameLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 22, weight: .bold)
+        label.font = .systemFont(ofSize: 20, weight: .semibold)
         label.textColor = .black
         return label
     }()
@@ -262,7 +263,7 @@ final class EP_ProfileHeaderView: UIView {
     private let statsCardView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
-        view.layer.cornerRadius = Layout.statsCornerRadius
+        view.layer.cornerRadius = 12
         view.clipsToBounds = true
         return view
     }()
@@ -270,22 +271,20 @@ final class EP_ProfileHeaderView: UIView {
     private let friendsStatView = EP_ProfileStatItemView()
     private let fanStatView = EP_ProfileStatItemView()
 
-    private lazy var shopButton: UIButton = {
-        let button = UIButton(type: .custom)
-        button.setImage("profile_shop".toImage, for: .normal)
-        button.imageView?.contentMode = .scaleAspectFill
-        button.clipsToBounds = true
-        button.layer.cornerRadius = 16
-        return button
+    private lazy var shopButton: UIImageView = {
+        let v = UIImageView()
+        v.image = "profile_shop".toImage
+        v.contentMode = .scaleAspectFill
+        v.isUserInteractionEnabled = true
+        return v
     }()
 
-    private lazy var achievementButton: UIButton = {
-        let button = UIButton(type: .custom)
-        button.setImage("profile_achive".toImage, for: .normal)
-        button.imageView?.contentMode = .scaleAspectFill
-        button.clipsToBounds = true
-        button.layer.cornerRadius = 16
-        return button
+    private lazy var achievementButton: UIImageView = {
+        let v = UIImageView()
+        v.image = "profile_achive".toImage
+        v.contentMode = .scaleAspectFill
+        v.isUserInteractionEnabled = true
+        return v
     }()
 
     private lazy var releaseTabButton = makeTabButton(title: "release")
@@ -295,7 +294,7 @@ final class EP_ProfileHeaderView: UIView {
         let stack = UIStackView(arrangedSubviews: [releaseTabButton, likeTabButton])
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = Layout.tabSpacing
+        stack.spacing = 25
         return stack
     }()
 }

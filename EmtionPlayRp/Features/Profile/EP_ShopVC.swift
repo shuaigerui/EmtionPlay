@@ -9,15 +9,6 @@ import UIKit
 
 class EP_ShopVC: EP_BaseVC {
 
-    private enum Layout {
-        static let horizontalInset: CGFloat = 16
-        static let columnCount: CGFloat = 3
-        static let interitemSpacing: CGFloat = 12
-        static let lineSpacing: CGFloat = 12
-        static let confirmButtonHeight: CGFloat = 74
-        static let confirmBottomInset: CGFloat = 40
-    }
-
     private var balance: Int = 123_123
     private var selectedProductIndex: Int = 1
 
@@ -39,8 +30,6 @@ class EP_ShopVC: EP_BaseVC {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        bgView.isHidden = true
-
         setupUI()
         setupConstraints()
         setupEvents()
@@ -54,11 +43,10 @@ class EP_ShopVC: EP_BaseVC {
     }
 
     private func setupUI() {
-        view.addSubview(bgV)
         view.addSubview(backButton)
         view.addSubview(titleView)
         view.addSubview(balanceCardView)
-        balanceCardView.addSubview(largeCoinView)
+        view.addSubview(largeCoinView)
         balanceCardView.addSubview(remainingTitleLabel)
         balanceCardView.addSubview(balanceLabel)
         balanceCardView.addSubview(balanceDescLabel)
@@ -67,9 +55,6 @@ class EP_ShopVC: EP_BaseVC {
     }
 
     private func setupConstraints() {
-        bgV.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
 
         backButton.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(10)
@@ -83,43 +68,45 @@ class EP_ShopVC: EP_BaseVC {
         }
 
         balanceCardView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalTo(backButton.snp.bottom).offset(8)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.top.equalTo(backButton.snp.bottom).offset(70)
+            make.height.equalTo(146)
         }
 
         largeCoinView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(20)
+            make.top.equalTo(backButton.snp.bottom).offset(16)
             make.centerX.equalToSuperview()
             make.size.equalTo(112)
         }
 
+        let w = (view.frame.width - 32)/2
         remainingTitleLabel.snp.makeConstraints { make in
-            make.top.equalTo(largeCoinView.snp.bottom).offset(12)
-            make.leading.equalToSuperview().offset(20)
+            make.top.equalToSuperview().offset(50)
+            make.trailing.equalToSuperview().offset(-w)
+            make.height.equalTo(34)
         }
-
         balanceLabel.snp.makeConstraints { make in
             make.leading.equalTo(remainingTitleLabel.snp.trailing).offset(6)
             make.centerY.equalTo(remainingTitleLabel)
-            make.trailing.lessThanOrEqualToSuperview().offset(-20)
+            make.trailing.lessThanOrEqualToSuperview().offset(-10)
         }
 
         balanceDescLabel.snp.makeConstraints { make in
-            make.top.equalTo(remainingTitleLabel.snp.bottom).offset(8)
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.bottom.equalToSuperview().inset(18)
+            make.top.equalTo(remainingTitleLabel.snp.bottom).offset(6)
+            make.leading.trailing.equalToSuperview().inset(5)
         }
 
         confirmButton.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
-            make.bottom.equalTo(view.safeAreaLayoutGuide).inset(Layout.confirmBottomInset)
-            make.height.equalTo(Layout.confirmButtonHeight)
+            make.centerX.equalToSuperview()
+            make.height.equalTo(75)
+            make.width.equalTo(270)
         }
 
         collectionView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
             make.top.equalTo(balanceCardView.snp.bottom).offset(16)
-            make.bottom.equalTo(confirmButton.snp.top).offset(-16)
+            make.bottom.equalTo(confirmButton.snp.top).offset(-48)
+            make.height.equalTo(272)
         }
     }
 
@@ -133,13 +120,9 @@ class EP_ShopVC: EP_BaseVC {
     }
 
     private func cellSize(for collectionView: UICollectionView) -> CGSize {
-        let width = collectionView.bounds.width > 0
-            ? collectionView.bounds.width
-            : UIScreen.main.bounds.width
-        let totalSpacing = Layout.horizontalInset * 2
-            + Layout.interitemSpacing * (Layout.columnCount - 1)
-        let cellWidth = (width - totalSpacing) / Layout.columnCount
-        return CGSize(width: cellWidth, height: cellWidth * 1.05)
+
+        let cellWidth = (UIScreen.main.bounds.width - 42) / 3
+        return CGSize(width: cellWidth, height: 80)
     }
 
     @objc private func clickBackButton() {
@@ -152,13 +135,6 @@ class EP_ShopVC: EP_BaseVC {
         balance += product.coinAmount
         updateBalanceText()
     }
-
-    private let bgV: UIImageView = {
-        let view = UIImageView()
-        view.image = "bg_02".toImage
-        view.contentMode = .scaleAspectFill
-        return view
-    }()
 
     private let backButton: UIButton = {
         let button = UIButton(type: .custom)
@@ -175,8 +151,8 @@ class EP_ShopVC: EP_BaseVC {
 
     private let balanceCardView: UIView = {
         let view = UIView()
-        view.backgroundColor = "#C8B6FF".toColor
-        view.layer.cornerRadius = 20
+        view.backgroundColor = "#A591F2".toColor
+        view.layer.cornerRadius = 64
         view.clipsToBounds = true
         return view
     }()
@@ -184,29 +160,29 @@ class EP_ShopVC: EP_BaseVC {
     private let largeCoinView: UIImageView = {
         let view = UIImageView()
         view.image = "shop_coin".toImage
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         return view
     }()
 
     private let remainingTitleLabel: UILabel = {
         let label = UILabel()
         label.text = "Remaining"
-        label.font = .systemFont(ofSize: 18, weight: .semibold)
+        label.font = .systemFont(ofSize: 24, weight: .semibold)
         label.textColor = .white
         return label
     }()
 
     private let balanceLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 18, weight: .bold)
-        label.textColor = "#FF6B57".toColor
+        label.font = .systemFont(ofSize: 24, weight: .semibold)
+        label.textColor = "#FF6A6A".toColor
         return label
     }()
 
     private let balanceDescLabel: UILabel = {
         let label = UILabel()
         label.text = "It can be used to post your moments and frustrations."
-        label.font = .systemFont(ofSize: 13, weight: .regular)
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
         label.textColor = .white
         label.numberOfLines = 0
         label.textAlignment = .center
@@ -215,13 +191,13 @@ class EP_ShopVC: EP_BaseVC {
 
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = Layout.interitemSpacing
-        layout.minimumLineSpacing = Layout.lineSpacing
+        layout.minimumInteritemSpacing = 5
+        layout.minimumLineSpacing = 16
         layout.sectionInset = UIEdgeInsets(
             top: 0,
-            left: Layout.horizontalInset,
+            left: 16,
             bottom: 0,
-            right: Layout.horizontalInset
+            right: 16
         )
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)

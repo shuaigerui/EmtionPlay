@@ -16,38 +16,31 @@ final class EP_ShopProductCell: UICollectionViewCell {
 
     static let reuseID = "EP_ShopProductCell"
 
-    private enum Layout {
-        static let cornerRadius: CGFloat = 16
-        static let coinSize: CGFloat = 28
-        static let contentInset = UIEdgeInsets(top: 14, left: 12, bottom: 12, right: 12)
-    }
-
     override var isSelected: Bool {
         didSet { updateSelectionAppearance() }
     }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        contentView.layer.cornerRadius = Layout.cornerRadius
+        contentView.layer.cornerRadius = 24
         contentView.clipsToBounds = true
 
         contentView.addSubview(coinRowStack)
         contentView.addSubview(priceLabel)
 
         coinRowStack.snp.makeConstraints { make in
-            make.top.equalToSuperview().inset(Layout.contentInset.top)
-            make.leading.greaterThanOrEqualToSuperview().inset(Layout.contentInset.left)
-            make.trailing.lessThanOrEqualToSuperview().inset(Layout.contentInset.right)
+            make.top.equalToSuperview().inset(12)
+//            make.leading.trailing.equalToSuperview().inset(5)
             make.centerX.equalToSuperview()
         }
 
         coinIconView.snp.makeConstraints { make in
-            make.size.equalTo(Layout.coinSize)
+            make.size.equalTo(36)
         }
 
         priceLabel.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(Layout.contentInset.left)
-            make.bottom.equalToSuperview().inset(Layout.contentInset.bottom)
+            make.leading.trailing.equalToSuperview().inset(5)
+            make.bottom.equalToSuperview().inset(3)
         }
 
         updateSelectionAppearance()
@@ -63,20 +56,19 @@ final class EP_ShopProductCell: UICollectionViewCell {
     }
 
     private func updateSelectionAppearance() {
-        contentView.backgroundColor = isSelected ? "#D9CCFF".toColor : .white
-        priceLabel.textColor = isSelected ? "#FF6B57".toColor : .black
+        contentView.backgroundColor = isSelected ? "#C890F7".toColor : .white
     }
 
     private let coinIconView: UIImageView = {
         let view = UIImageView()
         view.image = "shop_coin".toImage
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         return view
     }()
 
     private let amountLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 18, weight: .bold)
+        label.font = .systemFont(ofSize: 24, weight: .semibold)
         label.textColor = .black
         return label
     }()
@@ -85,13 +77,13 @@ final class EP_ShopProductCell: UICollectionViewCell {
         let stack = UIStackView(arrangedSubviews: [coinIconView, amountLabel])
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = 6
+        stack.spacing = 3
         return stack
     }()
 
     private let priceLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.font = .systemFont(ofSize: 20, weight: .semibold)
         label.textAlignment = .center
         return label
     }()
