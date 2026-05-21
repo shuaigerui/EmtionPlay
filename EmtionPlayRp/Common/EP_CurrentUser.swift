@@ -86,7 +86,7 @@ final class EP_CurrentUser {
             followCount: 0,
             fanCount: 0,
             coins: 0,
-            badge: 0
+            badgeInfo: .empty
         )
         guard UserData.shared.addUser(newUser) else { return false }
         login(with: newUser)
@@ -124,7 +124,7 @@ final class EP_CurrentUser {
             followCount: 0,
             fanCount: 0,
             coins: 0,
-            badge: 0
+            badgeInfo: .empty
         )
         guard UserData.shared.addUser(newUser) else { return false }
         login(with: newUser)

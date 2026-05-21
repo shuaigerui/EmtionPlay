@@ -13,36 +13,7 @@ class EP_ChatVC: EP_BaseVC {
         static let rowHeight: CGFloat = 96
     }
 
-    private var messages: [EP_ChatMessageItem] = [
-        EP_ChatMessageItem(
-            avatarImageName: "home_top",
-            userName: "Marceline",
-            dateText: "August 14, 2024",
-            message: "Are you all right, my friend",
-            hasUnread: true
-        ),
-        EP_ChatMessageItem(
-            avatarImageName: "home_top",
-            userName: "Marceline",
-            dateText: "August 14, 2024",
-            message: "Are you all right, my friend",
-            hasUnread: true
-        ),
-        EP_ChatMessageItem(
-            avatarImageName: "home_top",
-            userName: "Marceline",
-            dateText: "August 14, 2024",
-            message: "Are you all right, my friend",
-            hasUnread: true
-        ),
-        EP_ChatMessageItem(
-            avatarImageName: "home_top",
-            userName: "Marceline",
-            dateText: "August 14, 2024",
-            message: "Are you all right, my friend",
-            hasUnread: false
-        ),
-    ]
+    private var messages: [EP_ChatMessageItem] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -52,6 +23,24 @@ class EP_ChatVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadData()
+    }
+
+    private func loadData() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else {
+            messages = []
+            tableView.reloadData()
+            return
+        }
+        EP_ChatStore.shared.reload()
+        messages = EP_ChatStore.shared.listItems(ownerUserId: ownerId)
+        emptyV.isHidden = messages.count > 0
+        tableView.reloadData()
     }
 
     private func setupEvents() {
@@ -74,6 +63,7 @@ class EP_ChatVC: EP_BaseVC {
         view.addSubview(followButton)
         view.addSubview(inforView)
         view.addSubview(tableView)
+        view.addSubview(emptyV)
     }
 
     private func setupConstraints() {
@@ -105,6 +95,11 @@ class EP_ChatVC: EP_BaseVC {
             make.leading.trailing.equalToSuperview()
             make.top.equalTo(inforView.snp.bottom).offset(12)
             make.bottom.equalTo(view.safeAreaLayoutGuide)
+        }
+        
+        emptyV.snp.makeConstraints { make in
+            make.leading.trailing.equalToSuperview()
+            make.top.equalTo(inforView.snp.bottom).offset(100)
         }
     }
 
@@ -153,6 +148,8 @@ class EP_ChatVC: EP_BaseVC {
         view.contentMode = .scaleAspectFill
         return view
     }()
+    
+    private var emptyV = EP_EmptyView()
 }
 
 // MARK: - UITableViewDataSource & UITableViewDelegate
@@ -173,11 +170,12 @@ extension EP_ChatVC: UITableViewDataSource, UITableViewDelegate {
         cell.configure(with: messages[indexPath.row])
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = messages[indexPath.row]
-        if item.hasUnread {
+        if item.hasUnread, let ownerId = EP_CurrentUser.shared.user?.userId {
+            EP_ChatStore.shared.markAsRead(ownerUserId: ownerId, peerUserId: item.peerUserId)
             messages[indexPath.row].hasUnread = false
             tableView.reloadRows(at: [indexPath], with: .none)
         }
@@ -189,7 +187,13 @@ extension EP_ChatVC: UITableViewDataSource, UITableViewDelegate {
         trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
     ) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: nil) { [weak self] _, _, completion in
-            self?.messages.remove(at: indexPath.row)
+            guard let self, let ownerId = EP_CurrentUser.shared.user?.userId else {
+                completion(false)
+                return
+            }
+            let peerId = self.messages[indexPath.row].peerUserId
+            EP_ChatStore.shared.deleteConversation(ownerUserId: ownerId, peerUserId: peerId)
+            self.messages.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .left)
             completion(true)
         }

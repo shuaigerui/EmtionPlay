@@ -14,7 +14,7 @@ class EP_UserListVC: EP_BaseVC {
 
     init(mode: EP_UserListMode) {
         self.mode = mode
-        self.users = Self.defaultItems
+        self.users = []
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -22,6 +22,12 @@ class EP_UserListVC: EP_BaseVC {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
     }
 
     override func viewDidLoad() {
@@ -32,11 +38,44 @@ class EP_UserListVC: EP_BaseVC {
         setupConstraints()
         setupEvents()
     }
+    
+    private func loadData() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let currentUser = EP_CurrentUser.shared.user else {
+            users = []
+            emptyV.isHidden = users.count > 0
+            collectionView.reloadData()
+            return
+        }
+
+        let listUsers: [EP_UserModel]
+        switch mode {
+        case .follow:
+            listUsers = UserData.shared.followingUsers(for: currentUser.userId)
+        case .fan:
+            listUsers = UserData.shared.fanUsers(for: currentUser.userId)
+        case .black:
+            listUsers = UserData.shared.blockedUsers(for: currentUser.userId)
+        }
+
+        let followingIds = Set(currentUser.followingIds)
+        users = listUsers.map {
+            EP_UserListItem(
+                userId: $0.userId,
+                avatarImageName: $0.avatar,
+                userName: $0.name,
+                isFollowing: followingIds.contains($0.userId)
+            )
+        }
+        emptyV.isHidden = users.count > 0
+        collectionView.reloadData()
+    }
 
     private func setupUI() {
         view.addSubview(backButton)
         view.addSubview(titleView)
         view.addSubview(collectionView)
+        view.addSubview(emptyV)
     }
 
     private func setupConstraints() {
@@ -56,6 +95,10 @@ class EP_UserListVC: EP_BaseVC {
             make.top.equalTo(backButton.snp.bottom).offset(18)
             make.bottom.equalTo(view.safeAreaLayoutGuide)
         }
+        
+        emptyV.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+        }
     }
 
     private func setupEvents() {
@@ -73,13 +116,32 @@ class EP_UserListVC: EP_BaseVC {
     }
 
     private func handleAction(at index: Int) {
-        guard users.indices.contains(index) else { return }
+        guard users.indices.contains(index),
+              let currentUserId = EP_CurrentUser.shared.user?.userId else { return }
+        let targetUserId = users[index].userId
+        guard !targetUserId.isEmpty else { return }
+
         switch mode {
         case .black:
-            users.remove(at: index)
-            collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
-        case .fan, .follow:
-            break
+            UserData.shared.setUserBlock(
+                userId: targetUserId,
+                isBlock: false,
+                ownerUserId: currentUserId
+            )
+            EP_CurrentUser.shared.refreshFromDatabase()
+            loadData()
+        case .follow:
+            UserData.shared.unfollowUser(ownerUserId: currentUserId, targetUserId: targetUserId)
+            EP_CurrentUser.shared.refreshFromDatabase()
+            loadData()
+        case .fan:
+            if UserData.shared.isFollowing(ownerUserId: currentUserId, targetUserId: targetUserId) {
+                UserData.shared.unfollowUser(ownerUserId: currentUserId, targetUserId: targetUserId)
+            } else {
+                UserData.shared.followUser(ownerUserId: currentUserId, targetUserId: targetUserId)
+            }
+            EP_CurrentUser.shared.refreshFromDatabase()
+            loadData()
         }
     }
 
@@ -116,15 +178,9 @@ class EP_UserListVC: EP_BaseVC {
         collectionView.register(EP_UserListCell.self, forCellWithReuseIdentifier: EP_UserListCell.reuseID)
         return collectionView
     }()
+    
+    private var emptyV = EP_EmptyView()
 
-    private static let defaultItems: [EP_UserListItem] = [
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-        EP_UserListItem(avatarImageName: "home_top", userName: "Marceline"),
-    ]
 }
 
 // MARK: - UICollectionViewDataSource & UICollectionViewDelegateFlowLayout

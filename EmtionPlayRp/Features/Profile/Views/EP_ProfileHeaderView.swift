@@ -181,7 +181,7 @@ final class EP_ProfileHeaderView: UIView {
         coverImageView.image = model.coverImage ?? model.coverImageName.toImage
         avatarImageView.image = model.avatarImageName.toImage
         nameLabel.text = model.userName
-        friendsStatView.configure(count: model.friendsCount, title: "Friends")
+        friendsStatView.configure(count: model.friendsCount, title: "Follow")
         fanStatView.configure(count: model.fanCount, title: "Fan")
         selectedTab = model.selectedTab
         updateTabAppearance()

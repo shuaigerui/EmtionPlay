@@ -179,10 +179,10 @@ extension EP_PostVC: UITableViewDataSource, UITableViewDelegate {
             EP_PersonVC.show(from: self, userId: item.userId)
         }
         cell.onMoreTapped = { [weak self] in
-            self?.ep_presentReportSheet { option in
-                if option == .block, !item.userId.isEmpty {
-                    UserData.shared.setUserBlock(userId: item.userId, isBlock: true)
-                }
+            self?.ep_presentReportSheet { [weak self] _ in
+                guard let self, !item.postId.isEmpty else { return }
+                self.ep_hidePost(postId: item.postId)
+                self.loadData()
             }
         }
         cell.onPostDeleted = { [weak self] in

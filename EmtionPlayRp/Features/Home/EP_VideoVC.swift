@@ -144,9 +144,12 @@ class EP_VideoVC: EP_BaseVC {
     }
 
     @objc private func onMoreTapped() {
-        ep_presentReportSheet { [weak self] option in
-            guard let self, option == .block, !self.postItem.userId.isEmpty else { return }
-            UserData.shared.setUserBlock(userId: self.postItem.userId, isBlock: true)
+        ep_presentReportSheet { [weak self] _ in
+            guard let self, !self.postItem.postId.isEmpty else { return }
+            self.ep_hidePost(postId: self.postItem.postId)
+            guard let nav = self.navigationController else { return }
+            nav.popViewController(animated: false)
+            nav.popViewController(animated: true)
         }
     }
 

@@ -8,6 +8,7 @@
 import UIKit
 
 struct EP_ChatMessageItem {
+    let peerUserId: String
     let avatarImageName: String
     let userName: String
     let dateText: String
@@ -87,7 +88,7 @@ final class EP_ChatMessageCell: UITableViewCell {
     }
 
     func configure(with item: EP_ChatMessageItem) {
-        avatarImageView.image = item.avatarImageName.toImage
+        avatarImageView.image = item.avatarImageName.toAvatarImage ?? item.avatarImageName.toImage
         nameLabel.text = item.userName
         dateLabel.text = item.dateText
         messageLabel.text = item.message

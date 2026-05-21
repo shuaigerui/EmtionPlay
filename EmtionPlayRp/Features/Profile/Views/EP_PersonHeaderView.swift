@@ -154,6 +154,10 @@ final class EP_PersonHeaderView: UIView {
         fanStatView.configure(count: model.fanCount, title: "Fan")
     }
 
+    func setMoreButtonHidden(_ hidden: Bool) {
+        moreButton.isHidden = hidden
+    }
+
     @objc private func onMoreButtonTapped() {
         onMoreTapped?()
     }

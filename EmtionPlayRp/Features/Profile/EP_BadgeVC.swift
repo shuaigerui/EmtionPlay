@@ -17,42 +17,14 @@ struct EP_BadgeTierItem {
 
 class EP_BadgeVC: EP_BaseVC {
 
-    private let remainingCurrent: Int = 200
-    private let remainingTotal: Int = 300
-    private let avatarImageName: String
+    private var remainingCurrent = 0
+    private var remainingTotal = EP_BadgeModel.legendThreshold
+    private var avatarImageName = ""
+    private var badgeTiers: [EP_BadgeTierItem] = []
+    private var energyItems: [EP_BadgeEnergyItem] = []
+    private var energyRowViews: [EP_BadgeEnergyRowView] = []
 
-    private let badgeTiers: [EP_BadgeTierItem] = [
-        EP_BadgeTierItem(
-            title: "Dimension",
-            value: 20,
-            imageName: "badge_dimen",
-            lockedImageName: "badge_dimen_sel",
-            isUnlocked: true
-        ),
-        EP_BadgeTierItem(
-            title: "Starshine",
-            value: 60,
-            imageName: "badge_star",
-            lockedImageName: "badge_star_sel",
-            isUnlocked: false
-        ),
-        EP_BadgeTierItem(
-            title: "legend",
-            value: 100,
-            imageName: "badge_legend",
-            lockedImageName: "badge_legend_sel",
-            isUnlocked: false
-        ),
-    ]
-
-    private let energyItems: [EP_BadgeEnergyItem] = [
-        EP_BadgeEnergyItem(title: "Publish 10 works", current: 10, total: 10),
-        EP_BadgeEnergyItem(title: "Received 20 likes", current: 10, total: 10),
-        EP_BadgeEnergyItem(title: "Gained 10 followers", current: 10, total: 10),
-    ]
-
-    init(avatarImageName: String = "home_top") {
-        self.avatarImageName = avatarImageName
+    init() {
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -61,6 +33,12 @@ class EP_BadgeVC: EP_BaseVC {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,7 +46,76 @@ class EP_BadgeVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
+    }
+
+    private func loadData() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let user = EP_CurrentUser.shared.user else { return }
+
+        let info = user.badgeInfo
+        avatarImageName = user.avatar
+        remainingCurrent = info.remain
+        remainingTotal = EP_BadgeModel.legendThreshold
+        badgeTiers = Self.makeBadgeTiers(score: info.remain)
+        energyItems = [
+            EP_BadgeEnergyItem(
+                title: "Publish 10 works",
+                current: min(info.push, EP_BadgeModel.pushGoal),
+                total: EP_BadgeModel.pushGoal
+            ),
+            EP_BadgeEnergyItem(
+                title: "Received 20 likes",
+                current: min(info.receive, EP_BadgeModel.receiveGoal),
+                total: EP_BadgeModel.receiveGoal
+            ),
+            EP_BadgeEnergyItem(
+                title: "Gained 10 followers",
+                current: min(info.gain, EP_BadgeModel.gainGoal),
+                total: EP_BadgeModel.gainGoal
+            ),
+        ]
+
         applyData()
+        reloadBadgeTiers()
+        zip(energyRowViews, energyItems).forEach { row, item in
+            row.configure(with: item)
+        }
+    }
+
+    private static func makeBadgeTiers(score: Int) -> [EP_BadgeTierItem] {
+        [
+            EP_BadgeTierItem(
+                title: "Dimension",
+                value: 20,
+                imageName: "badge_dimen",
+                lockedImageName: "badge_dimen_sel",
+                isUnlocked: score >= 20
+            ),
+            EP_BadgeTierItem(
+                title: "Starshine",
+                value: 60,
+                imageName: "badge_star",
+                lockedImageName: "badge_star_sel",
+                isUnlocked: score >= 60
+            ),
+            EP_BadgeTierItem(
+                title: "legend",
+                value: 100,
+                imageName: "badge_legend",
+                lockedImageName: "badge_legend_sel",
+                isUnlocked: score >= 100
+            ),
+        ]
+    }
+
+    private func reloadBadgeTiers() {
+        badgesStack.arrangedSubviews.forEach { view in
+            badgesStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        badgeTiers.forEach { tier in
+            badgesStack.addArrangedSubview(makeBadgeColumn(for: tier))
+        }
     }
 
     private func setupUI() {
@@ -80,13 +127,18 @@ class EP_BadgeVC: EP_BaseVC {
         contentStack.addArrangedSubview(statusCardView)
         contentStack.addArrangedSubview(badgesCardView)
         contentStack.addArrangedSubview(energyTitleLabel)
-        energyItems.forEach { item in
+        let rowTitles = [
+            "Publish 10 works",
+            "Received 20 likes",
+            "Gained 10 followers",
+        ]
+        rowTitles.forEach { _ in
             let row = EP_BadgeEnergyRowView()
-            row.configure(with: item)
             row.snp.makeConstraints { make in
                 make.height.equalTo(70)
             }
             energyStack.addArrangedSubview(row)
+            energyRowViews.append(row)
         }
         contentStack.addArrangedSubview(energyStack)
 
@@ -95,9 +147,6 @@ class EP_BadgeVC: EP_BaseVC {
         statusCardView.addSubview(remainingProgressLabel)
         statusCardView.addSubview(remainingProgressView)
 
-        badgeTiers.forEach { tier in
-            badgesStack.addArrangedSubview(makeBadgeColumn(for: tier))
-        }
         badgesCardView.addSubview(badgesStack)
 
         contentStack.setCustomSpacing(20, after: badgesCardView)
@@ -175,7 +224,7 @@ class EP_BadgeVC: EP_BaseVC {
     }
 
     private func applyData() {
-        avatarImageView.image = avatarImageName.toImage
+        avatarImageView.image = avatarImageName.toAvatarImage ?? avatarImageName.toImage
         remainingProgressLabel.text = "\(remainingCurrent)/\(remainingTotal)"
         let progress = remainingTotal > 0
             ? min(1, CGFloat(remainingCurrent) / CGFloat(remainingTotal))
@@ -198,7 +247,7 @@ class EP_BadgeVC: EP_BaseVC {
 
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
-        imageView.image = (tier.isUnlocked ? tier.imageName : tier.lockedImageName).toImage
+        imageView.image = (tier.isUnlocked ? tier.lockedImageName : tier.imageName).toImage
 
         let valueLabel = UILabel()
         valueLabel.text = "\(tier.value)"

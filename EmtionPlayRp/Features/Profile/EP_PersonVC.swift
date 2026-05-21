@@ -23,6 +23,13 @@ class EP_PersonVC: EP_BaseVC {
     private var videoPostItem: EP_PostFeedItem?
     private var isFollowing = false
 
+    private var isOwnProfile: Bool {
+        guard let currentUserId = EP_CurrentUser.shared.user?.userId, !peerUserId.isEmpty else {
+            return false
+        }
+        return peerUserId == currentUserId
+    }
+
     init(
         headerModel: EP_PersonHeaderModel = .preview,
         feedItems: [EP_PostFeedItem]? = nil
@@ -34,7 +41,8 @@ class EP_PersonVC: EP_BaseVC {
     }
 
     convenience init(user: EP_UserModel) {
-        self.init(headerModel: user.personHeaderModel, feedItems: user.postFeedItems)
+        let items = UserData.shared.visiblePosts(user.posts).map(\.feedItem)
+        self.init(headerModel: user.personHeaderModel, feedItems: items)
         peerUserId = user.userId
         peerName = user.name
         peerAvatarImageName = user.avatar
@@ -63,6 +71,7 @@ class EP_PersonVC: EP_BaseVC {
         setupConstraints()
         setupTableHeader()
         setupEvents()
+        applyOwnProfileUIIfNeeded()
     }
 
     override func viewDidLayoutSubviews() {
@@ -75,13 +84,26 @@ class EP_PersonVC: EP_BaseVC {
         view.addSubview(menuView)
         view.addSubview(backButton)
 
-        let bottomInset = Layout.menuBarHeight + Layout.menuBottomInset + 12
+        updateTableBottomInset()
+    }
+
+    private func updateTableBottomInset() {
+        let bottomInset: CGFloat = isOwnProfile
+            ? Layout.menuBottomInset
+            : Layout.menuBarHeight + Layout.menuBottomInset + 12
         tableView.contentInset.bottom = bottomInset
         if #available(iOS 13.0, *) {
             tableView.verticalScrollIndicatorInsets.bottom = bottomInset
         } else {
             tableView.scrollIndicatorInsets.bottom = bottomInset
         }
+    }
+
+    private func applyOwnProfileUIIfNeeded() {
+        guard isOwnProfile else { return }
+        menuView.isHidden = true
+        personHeaderView.setMoreButtonHidden(true)
+        updateTableBottomInset()
     }
 
     private func setupConstraints() {
@@ -112,7 +134,7 @@ class EP_PersonVC: EP_BaseVC {
         personHeaderView.onMoreTapped = { [weak self] in
             self?.ep_presentReportSheet { [weak self] option in
                 guard let self, option == .block, !self.peerUserId.isEmpty else { return }
-                UserData.shared.setUserBlock(userId: self.peerUserId, isBlock: true)
+                self.ep_blockUser(userId: self.peerUserId)
             }
         }
         personHeaderView.onFriendsTapped = { [weak self] in
@@ -141,7 +163,11 @@ class EP_PersonVC: EP_BaseVC {
 
     private func openChatRoom() {
         navigationController?.pushViewController(
-            EP_ChatRoomVC(peerName: peerName, peerAvatarImageName: peerAvatarImageName),
+            EP_ChatRoomVC(
+                peerName: peerName,
+                peerAvatarImageName: peerAvatarImageName,
+                peerUserId: peerUserId.isEmpty ? nil : peerUserId
+            ),
             animated: true
         )
     }
@@ -170,7 +196,7 @@ class EP_PersonVC: EP_BaseVC {
     private func reloadFeedItems() {
         guard !peerUserId.isEmpty,
               let user = UserData.shared.user(userId: peerUserId) else { return }
-        feedItems = user.postFeedItems
+        feedItems = UserData.shared.visiblePosts(user.posts).map(\.feedItem)
         tableView.reloadData()
     }
 
@@ -257,12 +283,16 @@ extension EP_PersonVC: UITableViewDataSource, UITableViewDelegate {
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath.row)
         }
-        cell.onAvatarTapped = { [weak self] in
-            guard let self else { return }
-            EP_PersonVC.show(from: self, userId: item.userId)
-        }
+//        cell.onAvatarTapped = { [weak self] in
+//            guard let self else { return }
+//            EP_PersonVC.show(from: self, userId: item.userId)
+//        }
         cell.onMoreTapped = { [weak self] in
-            self?.ep_presentReportSheet()
+            self?.ep_presentReportSheet { [weak self] _ in
+                guard let self, !item.postId.isEmpty else { return }
+                self.ep_hidePost(postId: item.postId)
+                self.reloadFeedItems()
+            }
         }
         cell.onPostDeleted = { [weak self] in
             self?.reloadFeedItems()

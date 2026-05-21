@@ -9,6 +9,9 @@ import UIKit
 
 class EP_RoomHeaderView: UIView {
 
+    var videoBlock: (() -> Void)?
+    var moreBlock: (() -> Void)?
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -42,6 +45,17 @@ class EP_RoomHeaderView: UIView {
             make.centerY.equalToSuperview()
             make.leading.equalTo(iconView.snp.trailing).offset(2)
         }
+        
+        videoButton.addTarget(self, action: #selector(clickVideoButton), for: .touchUpInside)
+        moreButton.addTarget(self, action: #selector(clickMoreButton), for: .touchUpInside)
+    }
+    
+    @objc private func clickVideoButton(){
+        videoBlock?()
+    }
+    
+    @objc private func clickMoreButton(){
+        moreBlock?()
     }
     
     private let cardView: UIImageView = {

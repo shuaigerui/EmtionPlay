@@ -172,7 +172,8 @@ extension EP_RoomVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
             self?.navigationController?.pushViewController(
                 EP_ChatRoomVC(
                     peerName: room.name,
-                    peerAvatarImageName: room.memberAvatarImageNames.first ?? "avatar_01"
+                    peerAvatarImageName: room.memberAvatarImageNames.first ?? "avatar_01",
+                    peerUserId: nil
                 ),
                 animated: true
             )

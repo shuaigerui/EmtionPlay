@@ -18,7 +18,7 @@ class EP_FriendsVC: EP_BaseVC {
 
     init(mode: EP_FriendListMode) {
         self.mode = mode
-        self.friends = mode == .follow ? Self.defaultFollowItems : Self.defaultFriendItems
+        self.friends = []
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -27,6 +27,12 @@ class EP_FriendsVC: EP_BaseVC {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+                
+        loadData()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -34,6 +40,36 @@ class EP_FriendsVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
+    }
+    
+    private func loadData() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let current = EP_CurrentUser.shared.user else {
+            friends = []
+            tableView.reloadData()
+            return
+        }
+
+        let fanSet = Set(current.fanIds)
+        let userIds: [String]
+        switch mode {
+        case .friend:
+            userIds = current.followingIds.filter { fanSet.contains($0) }
+        case .follow:
+            userIds = current.followingIds
+        }
+
+        friends = userIds.compactMap { userId in
+            guard let user = UserData.shared.user(userId: userId) else { return nil }
+            let isMutual = fanSet.contains(userId)
+            return EP_FriendItem(
+                userId: userId,
+                avatarImageName: user.avatar,
+                userName: user.name,
+                isFollowing: mode == .follow ? isMutual : false
+            )
+        }
+        tableView.reloadData()
     }
 
     private func setupUI() {
@@ -83,19 +119,6 @@ class EP_FriendsVC: EP_BaseVC {
         return button
     }()
 
-    private static let defaultFriendItems: [EP_FriendItem] = [
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-    ]
-
-    private static let defaultFollowItems: [EP_FriendItem] = [
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: false),
-        EP_FriendItem(avatarImageName: "home_top", userName: "Marceline", isFollowing: true),
-    ]
 }
 
 // MARK: - UITableViewDataSource & UITableViewDelegate
@@ -113,9 +136,10 @@ extension EP_FriendsVC: UITableViewDataSource, UITableViewDelegate {
         ) as? EP_FriendCell else {
             return UITableViewCell()
         }
-        cell.configure(with: friends[indexPath.row], mode: mode)
-        cell.onChatTapped = {
-            // TODO: Open chat with friend
+        let item = friends[indexPath.row]
+        cell.configure(with: item, mode: mode)
+        cell.onChatTapped = { [weak self] in
+            self?.openChat(with: item)
         }
         cell.onFollowTapped = { [weak self] in
             self?.toggleFollow(at: indexPath.row)
@@ -128,8 +152,7 @@ extension EP_FriendsVC: UITableViewDataSource, UITableViewDelegate {
         trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
     ) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: nil) { [weak self] _, _, completion in
-            self?.friends.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .left)
+            self?.unfollow(at: indexPath.row)
             completion(true)
         }
         deleteAction.image = "chat_del".toImage?.withRenderingMode(.alwaysOriginal)
@@ -139,9 +162,28 @@ extension EP_FriendsVC: UITableViewDataSource, UITableViewDelegate {
         return configuration
     }
 
+    private func openChat(with item: EP_FriendItem) {
+        navigationController?.pushViewController(
+            EP_ChatRoomVC(
+                peerUserId: item.userId,
+                peerName: item.userName,
+                peerAvatarImageName: item.avatarImageName
+            ),
+            animated: true
+        )
+    }
+
     private func toggleFollow(at index: Int) {
-        guard mode == .follow, friends.indices.contains(index) else { return }
-        friends[index].isFollowing.toggle()
-        tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+        guard mode == .follow else { return }
+        unfollow(at: index)
+    }
+
+    private func unfollow(at index: Int) {
+        guard friends.indices.contains(index),
+              let ownerId = EP_CurrentUser.shared.user?.userId else { return }
+        let targetId = friends[index].userId
+        UserData.shared.unfollowUser(ownerUserId: ownerId, targetUserId: targetId)
+        EP_CurrentUser.shared.refreshFromDatabase()
+        loadData()
     }
 }

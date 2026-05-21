@@ -97,7 +97,11 @@ class EP_DetailVC: EP_BaseVC {
             self?.openVideoPlayerIfNeeded()
         }
         header.onMoreTapped = { [weak self] in
-            self?.ep_presentReportSheet()
+            self?.ep_presentReportSheet { [weak self] _ in
+                guard let self else { return }
+                self.ep_hidePost(postId: self.postId)
+                self.navigationController?.popViewController(animated: true)
+            }
         }
         tableView.tableHeaderView = header
     }

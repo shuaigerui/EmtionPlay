@@ -8,8 +8,10 @@
 import UIKit
 
 struct EP_FriendItem {
+    let userId: String
     let avatarImageName: String
     let userName: String
+    /// `.follow` 模式下表示对方是否也在粉丝列表中（互关）
     var isFollowing: Bool
 }
 
@@ -78,7 +80,7 @@ final class EP_FriendCell: UITableViewCell {
     }
 
     func configure(with item: EP_FriendItem, mode: EP_FriendListMode) {
-        avatarImageView.image = item.avatarImageName.toImage
+        avatarImageView.image = item.avatarImageName.toAvatarImage ?? item.avatarImageName.toImage
         nameLabel.text = item.userName
 
         switch mode {

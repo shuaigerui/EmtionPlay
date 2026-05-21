@@ -149,6 +149,7 @@ class EP_ReleaseVC: EP_BaseVC {
             view.makeToast(ToastMessage.publishFailed)
             return
         }
+        UserData.shared.incrementBadgePush(userId: currentUser.userId)
         let newCoins = currentUser.coins - Self.postCost
         guard UserData.shared.updateUser(userId: currentUser.userId, coins: newCoins) else {
             view.makeToast(ToastMessage.publishFailed)

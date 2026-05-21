@@ -66,7 +66,7 @@ class EP_ProfileVC: EP_BaseVC {
         header.onAchievementTapped = { [weak self] in
             guard let self else { return }
             self.navigationController?.pushViewController(
-                EP_BadgeVC(avatarImageName: self.headerModel.avatarImageName),
+                EP_BadgeVC(),
                 animated: true
             )
         }
@@ -171,13 +171,13 @@ extension EP_ProfileVC: UITableViewDataSource, UITableViewDelegate {
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath.row)
         }
-        cell.onAvatarTapped = { [weak self] in
-            guard let self else { return }
-            EP_PersonVC.show(from: self, userId: item.userId)
-        }
-        cell.onMoreTapped = { [weak self] in
-            self?.ep_presentReportSheet()
-        }
+//        cell.onAvatarTapped = { [weak self] in
+//            guard let self else { return }
+//            EP_PersonVC.show(from: self, userId: item.userId)
+//        }
+//        cell.onMoreTapped = { [weak self] in
+//            self?.ep_presentReportSheet()
+//        }
         cell.onPostDeleted = { [weak self] in
             self?.loadData()
         }

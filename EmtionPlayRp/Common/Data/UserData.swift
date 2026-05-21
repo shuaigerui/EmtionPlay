@@ -29,19 +29,49 @@ final class UserData {
         } else {
             ensureTestUserExists()
             syncSeedPostsMediaIfNeeded()
+            syncTestUserProfileFromSeedIfNeeded()
+            syncTestUserBadgeInfoFromSeedIfNeeded()
         }
     }
 
     // MARK: - 查询
 
-    /// 所有带视频的帖子（首页等使用）
-    var allVideoPosts: [EP_PostModel] {
-        allPosts.filter { !$0.video.isEmpty }
+    private enum SessionKeys {
+        static let isLoggedIn = "ep_is_logged_in"
+        static let currentUserId = "ep_current_user_id"
     }
 
-    /// 纯图片帖子（社区页：有 img、无 video）
+    private var sessionUserId: String? {
+        guard UserDefaults.standard.bool(forKey: SessionKeys.isLoggedIn) else { return nil }
+        return UserDefaults.standard.string(forKey: SessionKeys.currentUserId)
+    }
+
+    /// 所有带视频的帖子（首页等使用，已过滤隐藏帖与拉黑用户）
+    var allVideoPosts: [EP_PostModel] {
+        visiblePosts(allPosts.filter { !$0.video.isEmpty })
+    }
+
+    /// 纯图片帖子（社区页：有 img、无 video，已过滤隐藏帖与拉黑用户）
     var allImagePosts: [EP_PostModel] {
-        allPosts.filter { !$0.img.isEmpty && $0.video.isEmpty }
+        visiblePosts(allPosts.filter { !$0.img.isEmpty && $0.video.isEmpty })
+    }
+
+    /// 对当前登录用户可见的帖子
+    func visiblePosts(_ posts: [EP_PostModel]) -> [EP_PostModel] {
+        let hiddenIds = Set(sessionUserId.flatMap { user(userId: $0)?.hiddenPostIds } ?? [])
+        let blockedUserIds = Set(database.users.filter(\.isBlock).map(\.userId))
+        return posts.filter { post in
+            !hiddenIds.contains(post.postId) && !blockedUserIds.contains(post.userId)
+        }
+    }
+
+    @discardableResult
+    func hidePost(postId: String, ownerUserId: String) -> Bool {
+        guard !postId.isEmpty, var owner = user(userId: ownerUserId) else { return false }
+        if !owner.hiddenPostIds.contains(postId) {
+            owner.hiddenPostIds.append(postId)
+        }
+        return updateUser(owner)
     }
 
     /// 本地 test 用户（自己），可直接改属性后 `updateUser(testUser!)`
@@ -134,10 +164,86 @@ final class UserData {
     }
 
     @discardableResult
-    func setUserBlock(userId: String, isBlock: Bool) -> Bool {
-        guard var user = user(userId: userId) else { return false }
-        user.isBlock = isBlock
-        return updateUser(user)
+    func setUserBlock(
+        userId: String,
+        isBlock: Bool,
+        ownerUserId: String? = nil
+    ) -> Bool {
+        guard var blocked = user(userId: userId) else { return false }
+        blocked.isBlock = isBlock
+        guard updateUser(blocked) else { return false }
+
+        guard let ownerId = ownerUserId, var owner = user(userId: ownerId) else { return true }
+        if isBlock {
+            if !owner.blockedUserIds.contains(userId) {
+                owner.blockedUserIds.append(userId)
+            }
+        } else {
+            owner.blockedUserIds.removeAll { $0 == userId }
+        }
+        return updateUser(owner)
+    }
+
+    func users(userIds: [String]) -> [EP_UserModel] {
+        userIds.compactMap { user(userId: $0) }
+    }
+
+    func followingUsers(for userId: String) -> [EP_UserModel] {
+        guard let user = user(userId: userId) else { return [] }
+        return users(userIds: user.followingIds)
+    }
+
+    func fanUsers(for userId: String) -> [EP_UserModel] {
+        guard let user = user(userId: userId) else { return [] }
+        return users(userIds: user.fanIds)
+    }
+
+    func blockedUsers(for userId: String) -> [EP_UserModel] {
+        guard let user = user(userId: userId) else { return [] }
+        return users(userIds: user.blockedUserIds)
+    }
+
+    func isFollowing(ownerUserId: String, targetUserId: String) -> Bool {
+        user(userId: ownerUserId)?.followingIds.contains(targetUserId) ?? false
+    }
+
+    @discardableResult
+    func followUser(ownerUserId: String, targetUserId: String) -> Bool {
+        guard ownerUserId != targetUserId,
+              var owner = user(userId: ownerUserId),
+              user(userId: targetUserId) != nil else { return false }
+        guard !owner.followingIds.contains(targetUserId) else { return true }
+
+        owner.followingIds.append(targetUserId)
+        owner.followCount = owner.followingIds.count
+        guard updateUser(owner) else { return false }
+
+        if var target = user(userId: targetUserId) {
+            if !target.fanIds.contains(ownerUserId) {
+                target.fanIds.append(ownerUserId)
+                target.fanCount = target.fanIds.count
+                updateUser(target)
+            }
+        }
+        return true
+    }
+
+    @discardableResult
+    func unfollowUser(ownerUserId: String, targetUserId: String) -> Bool {
+        guard var owner = user(userId: ownerUserId) else { return false }
+        let before = owner.followingIds.count
+        owner.followingIds.removeAll { $0 == targetUserId }
+        guard owner.followingIds.count != before else { return true }
+
+        owner.followCount = owner.followingIds.count
+        guard updateUser(owner) else { return false }
+
+        if var target = user(userId: targetUserId) {
+            target.fanIds.removeAll { $0 == ownerUserId }
+            target.fanCount = target.fanIds.count
+            updateUser(target)
+        }
+        return true
     }
 
     @discardableResult
@@ -149,7 +255,7 @@ final class UserData {
         followCount: Int? = nil,
         fanCount: Int? = nil,
         coins: Int? = nil,
-        badge: Int? = nil
+        badgeInfo: EP_BadgeModel? = nil
     ) -> Bool {
         guard var user = user(userId: userId) else { return false }
         if let name { user.name = name }
@@ -158,7 +264,14 @@ final class UserData {
         if let followCount { user.followCount = followCount }
         if let fanCount { user.fanCount = fanCount }
         if let coins { user.coins = coins }
-        if let badge { user.badge = badge }
+        if let badgeInfo { user.badgeInfo = badgeInfo }
+        return updateUser(user)
+    }
+
+    @discardableResult
+    func incrementBadgePush(userId: String) -> Bool {
+        guard var user = user(userId: userId) else { return false }
+        user.badgeInfo.recordPublish()
         return updateUser(user)
     }
 
@@ -262,6 +375,8 @@ final class UserData {
     func reload() {
         database = Self.loadFromDisk(fileName: fileName) ?? database
         syncSeedPostsMediaIfNeeded()
+        syncTestUserProfileFromSeedIfNeeded()
+        syncTestUserBadgeInfoFromSeedIfNeeded()
     }
 
     private static func loadFromDisk(fileName: String) -> EP_LocalDatabase? {
@@ -285,10 +400,75 @@ final class UserData {
             save()
             return
         }
-        if var test = user(userId: Self.testUserId),
-           test.email.isEmpty || test.password.isEmpty {
+        guard var test = user(userId: Self.testUserId) else { return }
+        let seedTest = Self.buildTestUser()
+        var changed = false
+        if test.email.isEmpty || test.password.isEmpty {
             test.email = Self.testAccountEmail
             test.password = Self.testAccountPassword
+            changed = true
+        }
+        if changed {
+            updateUser(test)
+        }
+    }
+
+    /// 将 test 用户的关注/粉丝等与 `buildTestUser()` 种子对齐（改种子后本地旧 JSON 会自动更新）
+    private func syncTestUserProfileFromSeedIfNeeded() {
+        guard var test = user(userId: Self.testUserId) else { return }
+        let seedTest = Self.buildTestUser()
+        var changed = false
+
+        if test.followingIds != seedTest.followingIds {
+            test.followingIds = seedTest.followingIds
+            changed = true
+        }
+        if test.fanIds != seedTest.fanIds {
+            test.fanIds = seedTest.fanIds
+            changed = true
+        }
+        if test.followCount != seedTest.followCount {
+            test.followCount = seedTest.followCount
+            changed = true
+        }
+        if test.fanCount != seedTest.fanCount {
+            test.fanCount = seedTest.fanCount
+            changed = true
+        }
+        if test.blockedUserIds != seedTest.blockedUserIds {
+            test.blockedUserIds = seedTest.blockedUserIds
+            changed = true
+        }
+        if changed {
+            updateUser(test)
+        }
+    }
+
+    /// test 用户 badge 与种子对齐（改种子或旧迁移错误数据后自动修正）
+    private func syncTestUserBadgeInfoFromSeedIfNeeded() {
+        guard var test = user(userId: Self.testUserId) else { return }
+        let seedInfo = Self.buildTestUser().badgeInfo
+        var info = test.badgeInfo
+        var changed = false
+
+        // push 只补种子下限，保留用户发更多帖后的累计
+        if info.push < seedInfo.push {
+            info.push = seedInfo.push
+            changed = true
+        }
+
+        // receive / gain 与种子保持一致（旧数据曾把 receive 写成帖子 like 合计导致显示 20/20）
+        if info.receive != seedInfo.receive {
+            info.receive = seedInfo.receive
+            changed = true
+        }
+        if info.gain != seedInfo.gain {
+            info.gain = seedInfo.gain
+            changed = true
+        }
+
+        if changed {
+            test.badgeInfo = info
             updateUser(test)
         }
     }
@@ -348,8 +528,11 @@ final class UserData {
             isBlock: false,
             followCount: 2,
             fanCount: 4,
+            followingIds: ["u001", "u002"],
+            fanIds: ["u001", "u002", "u003", "u004"],
+            blockedUserIds: [],
             coins: 100,
-            badge: 50,
+            badgeInfo: EP_BadgeModel(remain: 50, push: 2, receive: 8, gain: 2),
             posts: [
                 EP_PostModel(
                     postId: "p_test_01",
@@ -429,7 +612,7 @@ final class UserData {
                 followCount: 22,
                 fanCount: 22,
                 coins: 120,
-                badge: 200,
+                badgeInfo: EP_BadgeModel(remain: 70, push: 2, receive: 12, gain: 22),
                 posts: [
                     makePost(
                         postId: "p001",
@@ -460,7 +643,7 @@ final class UserData {
                 followCount: 18,
                 fanCount: 35,
                 coins: 88,
-                badge: 150,
+                badgeInfo: EP_BadgeModel(remain: 100, push: 2, receive: 15, gain: 35),
                 posts: [
                     makePost(
                         postId: "p003",
@@ -491,7 +674,7 @@ final class UserData {
                 followCount: 10,
                 fanCount: 12,
                 coins: 50,
-                badge: 80,
+                badgeInfo: EP_BadgeModel(remain: 30, push: 2, receive: 10, gain: 12),
                 posts: [
                     makePost(
                         postId: "p005",
@@ -521,7 +704,7 @@ final class UserData {
                 followCount: 30,
                 fanCount: 40,
                 coins: 200,
-                badge: 300,
+                badgeInfo: EP_BadgeModel(remain: 10, push: 2, receive: 8, gain: 40),
                 posts: [
                     makePost(
                         postId: "p006",

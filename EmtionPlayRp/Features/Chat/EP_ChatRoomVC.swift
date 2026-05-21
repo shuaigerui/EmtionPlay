@@ -14,33 +14,32 @@ class EP_ChatRoomVC: EP_BaseVC {
         static let inputBarHeight: CGFloat = 64
     }
 
+    private let peerUserId: String
     private let peerName: String
     private let peerAvatarImageName: String
-    private var messages: [EP_RoomMessageItem]
+    private var messages: [EP_RoomMessageItem] = []
 
-    init(
-        peerName: String = "Beach",
-        peerAvatarImageName: String = "home_top",
-        messages: [EP_RoomMessageItem] = EP_ChatRoomVC.defaultMessages
-    ) {
+    init(peerUserId: String, peerName: String, peerAvatarImageName: String) {
+        self.peerUserId = peerUserId
         self.peerName = peerName
         self.peerAvatarImageName = peerAvatarImageName
-        self.messages = messages
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
 
+    convenience init(peerName: String, peerAvatarImageName: String, peerUserId: String? = nil) {
+        self.init(
+            peerUserId: EP_ChatConversation.peerId(userId: peerUserId, displayName: peerName),
+            peerName: peerName,
+            peerAvatarImageName: peerAvatarImageName
+        )
+    }
+
     convenience init(chatItem: EP_ChatMessageItem) {
         self.init(
+            peerUserId: chatItem.peerUserId,
             peerName: chatItem.userName,
-            peerAvatarImageName: chatItem.avatarImageName,
-            messages: [
-                EP_RoomMessageItem(
-                    kind: .incoming,
-                    text: chatItem.message,
-                    avatarImageName: chatItem.avatarImageName
-                ),
-            ]
+            peerAvatarImageName: chatItem.avatarImageName
         )
     }
 
@@ -56,6 +55,12 @@ class EP_ChatRoomVC: EP_BaseVC {
         setupConstraints()
         setupEvents()
         setupTableHeader()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadMessages()
+        markConversationRead()
     }
 
     override func viewDidLayoutSubviews() {
@@ -102,6 +107,17 @@ class EP_ChatRoomVC: EP_BaseVC {
             frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: Layout.headerHeight)
         )
         header.configure(userName: peerName, avatarImageName: peerAvatarImageName)
+        header.moreBlock = { [weak self] in
+            self?.presentBlockPeerConfirmation()
+        }
+        header.videoBlock = { [weak self] in
+            guard let self else { return }
+            EP_VideoRoomVC.show(
+                from: self,
+                peerName: self.peerName,
+                peerAvatarImageName: self.peerAvatarImageName
+            )
+        }
         tableView.tableHeaderView = header
     }
 
@@ -113,14 +129,37 @@ class EP_ChatRoomVC: EP_BaseVC {
         tableView.tableHeaderView = header
     }
 
-    private func appendOutgoingMessage(_ text: String) {
-        let item = EP_RoomMessageItem(
-            kind: .outgoing,
-            text: text,
-            avatarImageName: "home_top"
-        )
-        messages.append(item)
+    private func reloadMessages() {
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else {
+            messages = []
+            tableView.reloadData()
+            return
+        }
+        EP_ChatStore.shared.reload()
+        messages = EP_ChatStore.shared.roomMessages(ownerUserId: ownerId, peerUserId: peerUserId)
         tableView.reloadData()
+        scrollToBottom(animated: false)
+    }
+
+    private func markConversationRead() {
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else { return }
+        EP_ChatStore.shared.markAsRead(ownerUserId: ownerId, peerUserId: peerUserId)
+    }
+
+    private func appendOutgoingMessage(_ text: String) {
+        guard let owner = EP_CurrentUser.shared.user else { return }
+        let avatar = owner.avatar
+        guard EP_ChatStore.shared.appendMessage(
+            ownerUserId: owner.userId,
+            peerUserId: peerUserId,
+            peerName: peerName,
+            peerAvatar: peerAvatarImageName,
+            text: text,
+            isOutgoing: true,
+            senderAvatar: avatar
+        ) != nil else { return }
+
+        reloadMessages()
         scrollToBottom(animated: true)
     }
 
@@ -134,18 +173,28 @@ class EP_ChatRoomVC: EP_BaseVC {
         navigationController?.popViewController(animated: true)
     }
 
-    private static let defaultMessages: [EP_RoomMessageItem] = [
-        EP_RoomMessageItem(
-            kind: .incoming,
-            text: "Hello. What do I need your answerHello. What do I need your answer?",
-            avatarImageName: "home_top"
-        ),
-        EP_RoomMessageItem(
-            kind: .outgoing,
-            text: "Hello. What do I need your answerHello. What do I need your answer?",
-            avatarImageName: "home_top"
-        ),
-    ]
+    private func presentBlockPeerConfirmation() {
+        let alert = UIAlertController(
+            title: "Block User",
+            message: "Block this user and delete all chat history?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+            self?.blockPeerDeleteChatAndPop()
+        })
+        present(alert, animated: true)
+    }
+
+    private func blockPeerDeleteChatAndPop() {
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else { return }
+
+        if UserData.shared.user(userId: peerUserId) != nil {
+            ep_blockUser(userId: peerUserId)
+        }
+        EP_ChatStore.shared.deleteConversation(ownerUserId: ownerId, peerUserId: peerUserId)
+        navigationController?.popViewController(animated: true)
+    }
 
     private lazy var tableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .plain)

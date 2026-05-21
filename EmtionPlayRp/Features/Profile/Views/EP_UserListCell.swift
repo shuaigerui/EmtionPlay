@@ -8,8 +8,18 @@
 import UIKit
 
 struct EP_UserListItem {
+    let userId: String
     let avatarImageName: String
     let userName: String
+    /// 当前登录用户是否已关注该用户
+    let isFollowing: Bool
+
+    init(userId: String, avatarImageName: String, userName: String, isFollowing: Bool = false) {
+        self.userId = userId
+        self.avatarImageName = avatarImageName
+        self.userName = userName
+        self.isFollowing = isFollowing
+    }
 }
 
 enum EP_UserListMode {
@@ -25,11 +35,11 @@ enum EP_UserListMode {
         }
     }
 
-    var actionButtonImageName: String {
+    func actionButtonImageName(isFollowing: Bool) -> String {
         switch self {
         case .black: return "black_cancel"
-        case .fan: return "fan_follow"
         case .follow: return "follow_follow"
+        case .fan: return isFollowing ? "follow_follow" : "fan_follow"
         }
     }
 }
@@ -82,9 +92,10 @@ final class EP_UserListCell: UICollectionViewCell {
     }
 
     func configure(with item: EP_UserListItem, mode: EP_UserListMode) {
-        avatarImageView.image = item.avatarImageName.toImage
+        avatarImageView.image = item.avatarImageName.toAvatarImage ?? item.avatarImageName.toImage
         nameLabel.text = item.userName
-        actionButton.setImage(mode.actionButtonImageName.toImage, for: .normal)
+        let imageName = mode.actionButtonImageName(isFollowing: item.isFollowing)
+        actionButton.setImage(imageName.toImage, for: .normal)
     }
 
     @objc private func onActionButtonTapped() {

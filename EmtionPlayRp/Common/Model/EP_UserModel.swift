@@ -16,8 +16,16 @@ struct EP_UserModel: Codable, Equatable {
     var isBlock: Bool
     var followCount: Int
     var fanCount: Int
+    /// 我关注的用户 id
+    var followingIds: [String]
+    /// 关注我的用户 id（粉丝）
+    var fanIds: [String]
+    /// 我拉黑的用户 id
+    var blockedUserIds: [String]
+    /// 我隐藏的帖子 id（举报后不再展示）
+    var hiddenPostIds: [String]
     var coins: Int
-    var badge: Int
+    var badgeInfo: EP_BadgeModel
     var posts: [EP_PostModel]
 
     init(
@@ -29,8 +37,12 @@ struct EP_UserModel: Codable, Equatable {
         isBlock: Bool,
         followCount: Int,
         fanCount: Int,
+        followingIds: [String] = [],
+        fanIds: [String] = [],
+        blockedUserIds: [String] = [],
+        hiddenPostIds: [String] = [],
         coins: Int,
-        badge: Int,
+        badgeInfo: EP_BadgeModel = .empty,
         posts: [EP_PostModel] = []
     ) {
         self.userId = userId
@@ -41,8 +53,12 @@ struct EP_UserModel: Codable, Equatable {
         self.isBlock = isBlock
         self.followCount = followCount
         self.fanCount = fanCount
+        self.followingIds = followingIds
+        self.fanIds = fanIds
+        self.blockedUserIds = blockedUserIds
+        self.hiddenPostIds = hiddenPostIds
         self.coins = coins
-        self.badge = badge
+        self.badgeInfo = badgeInfo
         self.posts = posts
     }
 
@@ -56,13 +72,37 @@ struct EP_UserModel: Codable, Equatable {
         isBlock = try container.decode(Bool.self, forKey: .isBlock)
         followCount = try container.decode(Int.self, forKey: .followCount)
         fanCount = try container.decode(Int.self, forKey: .fanCount)
+        followingIds = try container.decodeIfPresent([String].self, forKey: .followingIds) ?? []
+        fanIds = try container.decodeIfPresent([String].self, forKey: .fanIds) ?? []
+        blockedUserIds = try container.decodeIfPresent([String].self, forKey: .blockedUserIds) ?? []
+        hiddenPostIds = try container.decodeIfPresent([String].self, forKey: .hiddenPostIds) ?? []
         coins = try container.decode(Int.self, forKey: .coins)
-        badge = try container.decode(Int.self, forKey: .badge)
         posts = try container.decodeIfPresent([EP_PostModel].self, forKey: .posts) ?? []
+        if let info = try container.decodeIfPresent(EP_BadgeModel.self, forKey: .badgeInfo) {
+            badgeInfo = info
+        } else if let legacyBadge = try LegacyCodingKeys.decodeLegacyBadge(from: decoder) {
+            badgeInfo = EP_BadgeModel(
+                remain: legacyBadge,
+                push: max(posts.count, 0),
+                receive: 0,
+                gain: 0
+            )
+        } else {
+            badgeInfo = .empty
+        }
     }
 
     private enum CodingKeys: String, CodingKey {
-        case userId, name, avatar, email, password, isBlock, followCount, fanCount, coins, badge, posts
+        case userId, name, avatar, email, password, isBlock, followCount, fanCount
+        case followingIds, fanIds, blockedUserIds, hiddenPostIds, coins, badgeInfo, posts
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case badge
+
+        static func decodeLegacyBadge(from decoder: Decoder) throws -> Int? {
+            try decoder.container(keyedBy: Self.self).decodeIfPresent(Int.self, forKey: .badge)
+        }
     }
 
     static let preview = EP_UserModel(
@@ -73,7 +113,7 @@ struct EP_UserModel: Codable, Equatable {
         followCount: 22,
         fanCount: 22,
         coins: 100,
-        badge: 200
+        badgeInfo: .preview
     )
 }
 
@@ -91,7 +131,7 @@ extension EP_UserModel {
             coverImage: firstPost.flatMap { EP_PostMedia.coverImage(for: $0) },
             avatarImageName: avatar,
             userName: name,
-            badgeImageName: nil,
+            badgeImageName: badgeInfo.profileBadgeImageName,
             friendsCount: followCount,
             fanCount: fanCount
         )
