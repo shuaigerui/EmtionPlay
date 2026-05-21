@@ -222,6 +222,16 @@ extension EP_SettingVC: UITableViewDataSource, UITableViewDelegate {
             performLogout()
         case .deleteAccount:
             presentDeleteAccountConfirmation()
+        case .guide:
+            if let doc = URL(string: "https://docs.google.com/document/d/1rr4JRUudtCqCO8ey8Letm27G90eksmuaNYKaCS8UVUo/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
+        case .policy:
+            if let doc = URL(string: "https://docs.google.com/document/d/1KjySwNvKO02TxihyZsO4LtVvomwdT4OX6NF00F8Pv0E/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
+        case .contact:
+            navigationController?.pushViewController(EP_ContactVC(), animated: true)
         default:
             break
         }

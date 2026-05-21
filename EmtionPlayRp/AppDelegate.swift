@@ -32,21 +32,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         window = UIWindow(frame: UIScreen.main.bounds)
         
-//        let launchVC = VE_LaunchVC()
-//        launchVC.completion = {
-//            if VE_CurrentUser.isLoggedIn {
-//                self.window?.rootViewController = VE_TabBarVC()
-//            } else {
-//                self.window?.rootViewController = UINavigationController(rootViewController: VE_LoginVC())
-//            }
-//            self.window?.makeKeyAndVisible()
-//        }
-//        self.window?.rootViewController = launchVC
-        if EP_CurrentUser.shared.isLoggedIn {
-            window?.rootViewController = EP_TabBarVC()
-        } else {
-            window?.rootViewController = UINavigationController(rootViewController: EP_WelcomeVC())
+        let launchVC = EP_LaunchVC()
+        launchVC.completion = {
+            if EP_CurrentUser.shared.isLoggedIn {
+                self.window?.rootViewController = EP_TabBarVC()
+            } else {
+                self.window?.rootViewController = UINavigationController(rootViewController: EP_WelcomeVC())
+            }
+            self.window?.makeKeyAndVisible()
         }
+        self.window?.rootViewController = launchVC        
         window?.makeKeyAndVisible()
     }
 }

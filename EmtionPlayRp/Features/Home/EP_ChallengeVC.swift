@@ -18,14 +18,7 @@ class EP_ChallengeVC: EP_BaseVC {
         static let collectionTopSpacing: CGFloat = 16
     }
 
-    private let items: [EP_ChallengeItem] = [
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "1123", caption: "2h makeup, 5min photos."),
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "1123", caption: "2h makeup, 5min photos."),
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "986", caption: "2h makeup, 5min photos."),
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "856", caption: "2h makeup, 5min photos."),
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "743", caption: "2h makeup, 5min photos."),
-        EP_ChallengeItem(coverImageName: "home_top", likeCount: "621", caption: "2h makeup, 5min photos."),
-    ]
+    private var items: [EP_ChallengeItem] = []
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -37,6 +30,11 @@ class EP_ChallengeVC: EP_BaseVC {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadData()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -45,6 +43,20 @@ class EP_ChallengeVC: EP_BaseVC {
         setupUI()
         setupConstraints()
         setupEvents()
+    }
+
+    private func loadData() {
+        let ownerId = EP_CurrentUser.shared.user?.userId ?? ""
+        items = EP_ChallengeStore.shared.items(for: ownerId)
+        collectionView.reloadData()
+    }
+
+    private func toggleLike(at index: Int) {
+        guard let ownerId = EP_CurrentUser.shared.user?.userId,
+              items.indices.contains(index) else { return }
+        let challengeId = items[index].challengeId
+        items = EP_ChallengeStore.shared.toggleLike(ownerUserId: ownerId, challengeId: challengeId)
+        collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
     }
 
     private func setupUI() {
@@ -186,6 +198,9 @@ extension EP_ChallengeVC: UICollectionViewDataSource, UICollectionViewDelegateFl
             return UICollectionViewCell()
         }
         cell.configure(with: items[indexPath.item])
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleLike(at: indexPath.item)
+        }
         return cell
     }
 

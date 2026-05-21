@@ -63,6 +63,20 @@ enum SS_BundleResourceMedia {
         return uiImage(fileURL: url)
     }
 
+    /// `Resource/Rank` 下的挑战榜图片（如 `rank_01.png`）。
+    static func rankImageURL(baseName: String) -> URL? {
+        firstURL(
+            baseName: baseName,
+            subdirectories: ["Resource/Rank", "Rank"],
+            extensions: ["jpg", "jpeg", "png"]
+        )
+    }
+
+    static func rankImage(baseName: String) -> UIImage? {
+        guard let url = rankImageURL(baseName: baseName) else { return nil }
+        return uiImage(fileURL: url)
+    }
+
     /// `Resource/Friend` 下的朋友圈图片（如 `friend_01.png`）。
     static func friendImageURL(baseName: String) -> URL? {
         firstURL(

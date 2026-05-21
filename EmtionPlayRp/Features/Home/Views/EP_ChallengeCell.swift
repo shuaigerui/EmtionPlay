@@ -8,14 +8,27 @@
 import UIKit
 
 struct EP_ChallengeItem {
+    let challengeId: String
     let coverImageName: String
-    let likeCount: String
     let caption: String
+    let baseLikeCount: Int
+    var isLiked: Bool
+
+    /// 展示点赞数：基础值 + 当前用户已赞则 +1
+    var displayLikeCount: Int {
+        baseLikeCount + (isLiked ? 1 : 0)
+    }
+
+    var likeCountText: String {
+        "\(displayLikeCount)"
+    }
 }
 
 final class EP_ChallengeCell: UICollectionViewCell {
 
     static let reuseID = "EP_ChallengeCell"
+
+    var onLikeTapped: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -46,6 +59,8 @@ final class EP_ChallengeCell: UICollectionViewCell {
             make.bottom.equalToSuperview().inset(8)
             make.trailing.leading.equalToSuperview().inset(6)
         }
+
+        likeIconView.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
     }
 
     required init?(coder: NSCoder) {
@@ -53,9 +68,14 @@ final class EP_ChallengeCell: UICollectionViewCell {
     }
 
     func configure(with item: EP_ChallengeItem) {
-        coverImageView.image = item.coverImageName.toImage
-        likeCountLabel.text = item.likeCount
+        coverImageView.image = UIImage.ep_rank(item.coverImageName) ?? item.coverImageName.toImage
+        likeCountLabel.text = item.likeCountText
         captionLabel.text = item.caption
+        likeIconView.isSelected = item.isLiked
+    }
+
+    @objc private func onLikeButtonTapped() {
+        onLikeTapped?()
     }
 
     private let coverImageView: UIImageView = {
