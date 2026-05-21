@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/21.
 //
 
+import Toast_Swift
 import UIKit
 
 class EP_VideoRoomVC: EP_BaseVC {
@@ -37,12 +38,22 @@ class EP_VideoRoomVC: EP_BaseVC {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// 先检查相机权限，通过后再进入视频通话页
+    private static let friendsOnlyToast = "You must be friends to start a chat."
+
+    /// 互相关注校验 → 相机权限 → 进入视频通话页
     static func show(
         from viewController: UIViewController,
         peerName: String,
-        peerAvatarImageName: String
+        peerAvatarImageName: String,
+        peerUserId: String? = nil
     ) {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else { return }
+        let resolvedId = EP_ChatConversation.peerId(userId: peerUserId, displayName: peerName)
+        guard UserData.shared.areMutualFriends(ownerUserId: ownerId, peerUserId: resolvedId) else {
+            viewController.view.makeToast(friendsOnlyToast)
+            return
+        }
         EP_CameraPermission.checkCameraAccess(from: viewController) {
             let room = EP_VideoRoomVC(
                 peerName: peerName,

@@ -8,7 +8,6 @@
 import UIKit
 
 enum SettingRowType: CaseIterable {
-    case posts
     case contact
     case policy
     case guide
@@ -18,7 +17,6 @@ enum SettingRowType: CaseIterable {
 
     var imageName: String {
         switch self {
-        case .posts: return "setting_posts"
         case .contact: return "setting_contact"
         case .policy: return "setting_policy"
         case .guide: return "setting_guide"
@@ -81,7 +79,7 @@ class EP_SettingVC: EP_BaseVC {
     }
 
     private static func rowHeight(forTableWidth tableWidth: CGFloat) -> CGFloat {
-        guard let image = SettingRowType.posts.imageName.toImage, image.size.width > 0 else {
+        guard let image = SettingRowType.contact.imageName.toImage, image.size.width > 0 else {
             return Layout.rowHeight
         }
         let imageHeight = tableWidth * image.size.height / image.size.width
@@ -119,6 +117,38 @@ class EP_SettingVC: EP_BaseVC {
 
     @objc private func clickBackButton() {
         navigationController?.popViewController(animated: true)
+    }
+
+    private func presentDeleteAccountConfirmation() {
+        let alert = UIAlertController(
+            title: "Delete Account",
+            message: "This will permanently delete your account and all related data, including posts, chats, follows, blocks, and likes. This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.performDeleteAccount()
+        })
+        present(alert, animated: true)
+    }
+
+    private func performLogout() {
+        EP_CurrentUser.shared.logout()
+        EP_CurrentUser.shared.switchToWelcomeInterface()
+    }
+
+    private func performDeleteAccount() {
+        guard EP_CurrentUser.shared.deleteAccountAndSignOut() else {
+            let alert = UIAlertController(
+                title: nil,
+                message: "Failed to delete account. Please try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        EP_CurrentUser.shared.switchToWelcomeInterface()
     }
 
     private let backButton: UIButton = {
@@ -188,6 +218,10 @@ extension EP_SettingVC: UITableViewDataSource, UITableViewDelegate {
         switch rows[indexPath.row] {
         case .blacklist:
             navigationController?.pushViewController(EP_UserListVC(mode: .black), animated: true)
+        case .logout:
+            performLogout()
+        case .deleteAccount:
+            presentDeleteAccountConfirmation()
         default:
             break
         }

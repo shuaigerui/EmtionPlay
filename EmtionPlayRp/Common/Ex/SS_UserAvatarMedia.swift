@@ -41,6 +41,10 @@ enum SS_UserAvatarMedia {
 
     /// 删除 `av_{userId}` 沙盒头像（若存在）。
     static func removeSavedAvatarIfPresent(userId: Int64) {
+        removeSavedAvatarIfPresent(userId: "\(userId)")
+    }
+
+    static func removeSavedAvatarIfPresent(userId: String) {
         let base = "av_\(userId)"
         guard let url = imageFileURL(baseName: base) else { return }
         try? FileManager.default.removeItem(at: url)

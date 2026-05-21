@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/19.
 //
 
+import Toast_Swift
 import UIKit
 
 class EP_ChatRoomVC: EP_BaseVC {
@@ -115,7 +116,8 @@ class EP_ChatRoomVC: EP_BaseVC {
             EP_VideoRoomVC.show(
                 from: self,
                 peerName: self.peerName,
-                peerAvatarImageName: self.peerAvatarImageName
+                peerAvatarImageName: self.peerAvatarImageName,
+                peerUserId: self.peerUserId
             )
         }
         tableView.tableHeaderView = header
@@ -237,5 +239,58 @@ extension EP_ChatRoomVC: UITableViewDataSource, UITableViewDelegate {
         }
         cell.configure(with: messages[indexPath.row])
         return cell
+    }
+}
+
+// MARK: - Entry
+
+extension EP_ChatRoomVC {
+
+    private static let friendsOnlyToast = "You must be friends to start a chat."
+
+    static func show(
+        from viewController: UIViewController,
+        peerUserId: String,
+        peerName: String,
+        peerAvatarImageName: String
+    ) {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        guard let ownerId = EP_CurrentUser.shared.user?.userId else { return }
+        guard UserData.shared.areMutualFriends(ownerUserId: ownerId, peerUserId: peerUserId) else {
+            viewController.view.makeToast(friendsOnlyToast)
+            return
+        }
+        viewController.navigationController?.pushViewController(
+            EP_ChatRoomVC(
+                peerUserId: peerUserId,
+                peerName: peerName,
+                peerAvatarImageName: peerAvatarImageName
+            ),
+            animated: true
+        )
+    }
+
+    static func show(
+        from viewController: UIViewController,
+        peerName: String,
+        peerAvatarImageName: String,
+        peerUserId: String? = nil
+    ) {
+        let resolvedId = EP_ChatConversation.peerId(userId: peerUserId, displayName: peerName)
+        show(
+            from: viewController,
+            peerUserId: resolvedId,
+            peerName: peerName,
+            peerAvatarImageName: peerAvatarImageName
+        )
+    }
+
+    static func show(from viewController: UIViewController, chatItem: EP_ChatMessageItem) {
+        show(
+            from: viewController,
+            peerUserId: chatItem.peerUserId,
+            peerName: chatItem.userName,
+            peerAvatarImageName: chatItem.avatarImageName
+        )
     }
 }

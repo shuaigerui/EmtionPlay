@@ -105,6 +105,17 @@ final class EP_ChatStore {
         save()
     }
 
+    /// 删除与指定用户相关的全部会话（注销账号）
+    func deleteAllForUser(userId: String) {
+        guard !userId.isEmpty else { return }
+        let before = database.conversations.count
+        database.conversations.removeAll {
+            $0.ownerUserId == userId || $0.peerUserId == userId
+        }
+        guard database.conversations.count != before else { return }
+        save()
+    }
+
     func reload() {
         database = Self.loadFromDisk(fileName: fileName) ?? EP_ChatDatabase(conversations: [])
     }

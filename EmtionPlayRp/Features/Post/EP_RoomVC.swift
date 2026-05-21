@@ -23,8 +23,8 @@ class EP_RoomVC: EP_BaseVC {
         EP_RoomItem(
             roomId: "r001",
             coverImageName: "chat_01",
-            name: "Cosplay Fun",
-            memberAvatarImageNames: ["avatar_01", "avatar_02", "avatar_03"]
+            name: "Dating outfits",
+            memberAvatarImageNames: ["avatar_01", "avatar_02", "avatar_03", "avatar_04"]
         ),
         EP_RoomItem(
             roomId: "r002",
@@ -168,18 +168,25 @@ extension EP_RoomVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
         }
         let room = rooms[indexPath.item]
         cell.configure(with: room)
-        cell.onJoinTapped = { [weak self] in
-            self?.navigationController?.pushViewController(
-                EP_ChatRoomVC(
-                    peerName: room.name,
-                    peerAvatarImageName: room.memberAvatarImageNames.first ?? "avatar_01",
-                    peerUserId: nil
-                ),
-                animated: true
-            )
-        }
+//        cell.onJoinTapped = { [weak self] in
+//            guard let self else { return }
+//            self.navigationController?.pushViewController(
+//                EP_GroupRoomVC(room: room),
+//                animated: true
+//            )
+//        }
         return cell
     }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        let room = rooms[indexPath.item]
+        self.navigationController?.pushViewController(
+            EP_GroupRoomVC(room: room),
+            animated: true
+        )
+    }
+    
 
     func collectionView(
         _ collectionView: UICollectionView,

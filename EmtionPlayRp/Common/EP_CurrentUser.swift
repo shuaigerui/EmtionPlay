@@ -93,17 +93,24 @@ final class EP_CurrentUser {
         return true
     }
 
-    /// Apple 登录（当前为本地模拟：按 Apple 信息创建用户并登录）
+    /// Apple 登录：按 Apple 用户标识创建或恢复本地用户
     @discardableResult
-    func signInWithApple(displayName: String?, email: String?) -> Bool {
+    func signInWithApple(
+        appleUserId: String,
+        displayName: String?,
+        email: String?,
+        avatarImage: UIImage? = nil
+    ) -> Bool {
+        let trimmedAppleId = appleUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAppleId.isEmpty else { return false }
+
         let trimmedName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let name = trimmedName.isEmpty ? "Apple User" : trimmedName
         let normalizedEmail = email?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased() ?? ""
         let accountEmail: String
         if normalizedEmail.isEmpty {
-            accountEmail = "apple_\(UUID().uuidString.prefix(8).lowercased())@apple.local"
+            accountEmail = "apple_\(trimmedAppleId)@apple.local"
         } else {
             accountEmail = normalizedEmail
         }
@@ -113,11 +120,18 @@ final class EP_CurrentUser {
             return true
         }
 
+        let name = trimmedName.isEmpty ? "Apple User" : trimmedName
         let userId = Self.makeUserId()
+        var avatarKey = "avatar_01"
+        if let image = avatarImage?.ss_scaled(maxSide: 512),
+           let saved = SS_UserAvatarMedia.saveAvatar(image, userId: userId) {
+            avatarKey = saved
+        }
+
         let newUser = EP_UserModel(
             userId: userId,
             name: name,
-            avatar: "avatar_01",
+            avatar: avatarKey,
             email: accountEmail,
             password: "",
             isBlock: false,
@@ -134,6 +148,28 @@ final class EP_CurrentUser {
     func logout() {
         user = nil
         clearSessionFlags()
+    }
+
+    /// 删除当前账号本地数据并退出登录
+    @discardableResult
+    func deleteAccountAndSignOut() -> Bool {
+        guard let userId = user?.userId else { return false }
+        guard UserData.shared.deleteAccount(userId: userId) else { return false }
+        logout()
+        return true
+    }
+
+    /// 注销 / 退出后回到欢迎页
+    func switchToWelcomeInterface(animated: Bool = true) {
+        guard let window = UIApplication.window else { return }
+        let root = UINavigationController(rootViewController: EP_WelcomeVC())
+        guard animated else {
+            window.rootViewController = root
+            return
+        }
+        UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve) {
+            window.rootViewController = root
+        }
     }
 
     /// 从本地数据库刷新当前用户

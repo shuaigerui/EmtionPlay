@@ -163,13 +163,11 @@ extension EP_FriendsVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func openChat(with item: EP_FriendItem) {
-        navigationController?.pushViewController(
-            EP_ChatRoomVC(
-                peerUserId: item.userId,
-                peerName: item.userName,
-                peerAvatarImageName: item.avatarImageName
-            ),
-            animated: true
+        EP_ChatRoomVC.show(
+            from: self,
+            peerUserId: item.userId,
+            peerName: item.userName,
+            peerAvatarImageName: item.avatarImageName
         )
     }
 

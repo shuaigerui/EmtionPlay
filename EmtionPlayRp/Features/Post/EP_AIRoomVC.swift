@@ -9,18 +9,30 @@ import UIKit
 
 class EP_AIRoomVC: EP_BaseVC {
 
+    private static let welcomeText = "Hello, is there anything you'd like to tell me?"
+
+    private static let replyScripts: [String] = [
+        "I'm here to listen. Take your time.",
+        "Thank you for sharing that with me.",
+        "I hear you. How does that make you feel?",
+        "That sounds important. Would you like to say more?",
+        "You're not alone in this. I'm glad you reached out.",
+        "It's okay to feel that way. Your feelings are valid.",
+        "Let's take it one step at a time together.",
+        "I appreciate you opening up to me.",
+        "Sometimes talking helps. Keep going if you'd like.",
+        "I'm with you. What happened next?",
+    ]
+
     private var messages: [EP_RoomMessageItem] = [
         EP_RoomMessageItem(
             kind: .incoming,
-            text: "Hello. What do I need your answerHello. What do I need your answer?",
+            text: welcomeText,
             avatarImageName: "ai_icon"
         ),
-        EP_RoomMessageItem(
-            kind: .outgoing,
-            text: "Hello. What do I need your answerHello. What do I need your answer?",
-            avatarImageName: "home_top"
-        ),
     ]
+
+    private var isPageActive = false
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -40,6 +52,16 @@ class EP_AIRoomVC: EP_BaseVC {
         setupEvents()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        isPageActive = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isPageActive = false
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         chatPanelView.layer.cornerRadius = 24
@@ -50,7 +72,6 @@ class EP_AIRoomVC: EP_BaseVC {
         view.addSubview(chatPanelView)
         chatPanelView.addSubview(tableView)
         view.addSubview(aiIconView)
-        view.addSubview(hintLabel)
         view.addSubview(inputBarView)
         view.addSubview(backButton)
         view.addSubview(titleView)
@@ -82,15 +103,10 @@ class EP_AIRoomVC: EP_BaseVC {
             make.top.equalTo(backButton.snp.bottom).offset(175)
             make.bottom.equalTo(inputBarView.snp.top)
         }
-        
-        hintLabel.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.top.equalTo(aiIconView.snp.bottom).offset(14)
-        }
 
         tableView.snp.makeConstraints { make in
             make.leading.trailing.bottom.equalToSuperview()
-            make.top.equalToSuperview().offset(160)
+            make.top.equalToSuperview().offset(110)
         }
 
         inputBarView.snp.makeConstraints { make in
@@ -109,8 +125,29 @@ class EP_AIRoomVC: EP_BaseVC {
 
 
     private func appendOutgoingMessage(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let avatar = EP_CurrentUser.shared.user?.avatar ?? "home_top"
         messages.append(
-            EP_RoomMessageItem(kind: .outgoing, text: text, avatarImageName: "home_top")
+            EP_RoomMessageItem(kind: .outgoing, text: trimmed, avatarImageName: avatar)
+        )
+        tableView.reloadData()
+        scrollToBottom(animated: true)
+        scheduleAIReply()
+    }
+
+    private func scheduleAIReply() {
+        let delay = Double.random(in: 1...4)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.appendIncomingReply()
+        }
+    }
+
+    private func appendIncomingReply() {
+        guard isPageActive, let reply = Self.replyScripts.randomElement() else { return }
+        messages.append(
+            EP_RoomMessageItem(kind: .incoming, text: reply, avatarImageName: "ai_icon")
         )
         tableView.reloadData()
         scrollToBottom(animated: true)
@@ -168,16 +205,6 @@ class EP_AIRoomVC: EP_BaseVC {
         view.image = "ai_title".toImage
         view.contentMode = .scaleAspectFit
         return view
-    }()
-    
-    private let hintLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Unlocking dynamic posting costs 10 gold coins."
-        label.font = .systemFont(ofSize: 20, weight: .semibold)
-        label.textColor = "#999999".toColor
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        return label
     }()
 }
 

@@ -57,6 +57,9 @@ final class EP_PostFeedCell: UITableViewCell {
     var onPostDeleted: (() -> Void)?
 
     private var postId: String = ""
+    private var peerUserId: String = ""
+    private var peerName: String = ""
+    private var peerAvatarImageName: String = ""
     private var isOwnPost = false
 
 
@@ -111,6 +114,7 @@ final class EP_PostFeedCell: UITableViewCell {
 
         likeButton.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
         moreButton.addTarget(self, action: #selector(onMoreButtonTapped), for: .touchUpInside)
+        chatButton.addTarget(self, action: #selector(onChatButtonTapped), for: .touchUpInside)
 
         avatarImageView.isUserInteractionEnabled = true
         let avatarTap = UITapGestureRecognizer(target: self, action: #selector(onAvatarTap))
@@ -123,6 +127,9 @@ final class EP_PostFeedCell: UITableViewCell {
 
     func configure(with item: EP_PostFeedItem) {
         postId = item.postId
+        peerUserId = item.userId
+        peerName = item.userName
+        peerAvatarImageName = item.avatarImageName
         let currentUserId = EP_CurrentUser.shared.user?.userId ?? ""
         isOwnPost = !item.userId.isEmpty && item.userId == currentUserId
 
@@ -142,6 +149,16 @@ final class EP_PostFeedCell: UITableViewCell {
 
     @objc private func onAvatarTap() {
         onAvatarTapped?()
+    }
+    
+    @objc private func onChatButtonTapped() {
+        guard let viewController = ep_viewController, !peerUserId.isEmpty else { return }
+        EP_ChatRoomVC.show(
+            from: viewController,
+            peerName: peerName,
+            peerAvatarImageName: peerAvatarImageName,
+            peerUserId: peerUserId
+        )
     }
 
     @objc private func onMoreButtonTapped() {

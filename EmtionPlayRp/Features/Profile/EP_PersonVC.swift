@@ -162,13 +162,11 @@ class EP_PersonVC: EP_BaseVC {
     }
 
     private func openChatRoom() {
-        navigationController?.pushViewController(
-            EP_ChatRoomVC(
-                peerName: peerName,
-                peerAvatarImageName: peerAvatarImageName,
-                peerUserId: peerUserId.isEmpty ? nil : peerUserId
-            ),
-            animated: true
+        EP_ChatRoomVC.show(
+            from: self,
+            peerName: peerName,
+            peerAvatarImageName: peerAvatarImageName,
+            peerUserId: peerUserId.isEmpty ? nil : peerUserId
         )
     }
 
@@ -176,7 +174,8 @@ class EP_PersonVC: EP_BaseVC {
         EP_VideoRoomVC.show(
             from: self,
             peerName: peerName,
-            peerAvatarImageName: peerAvatarImageName
+            peerAvatarImageName: peerAvatarImageName,
+            peerUserId: peerUserId.isEmpty ? nil : peerUserId
         )
     }
 

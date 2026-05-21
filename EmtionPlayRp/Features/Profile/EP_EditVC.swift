@@ -11,6 +11,8 @@ class EP_EditVC: EP_BaseVC {
 
     private var avatarImageName: String
     private let initialNickname: String
+    /// 相册新选头像，保存时写入沙盒
+    private var pendingAvatarImage: UIImage?
 
     init(avatarImageName: String = "home_top", nickname: String = "Marceline") {
         self.avatarImageName = avatarImageName
@@ -92,8 +94,12 @@ class EP_EditVC: EP_BaseVC {
 
     private func setupEvents() {
         backButton.addTarget(self, action: #selector(clickBackButton), for: .touchUpInside)
-        changePhotoButton.addTarget(self, action: #selector(onChangePhotoTapped), for: .touchUpInside)
+//        changePhotoButton.addTarget(self, action: #selector(onChangePhotoTapped), for: .touchUpInside)
         reviseButton.addTarget(self, action: #selector(onReviseTapped), for: .touchUpInside)
+        
+        let imgTap = UITapGestureRecognizer(target: self, action: #selector(onChangePhotoTapped))
+        avatarImageView.isUserInteractionEnabled = true
+        avatarImageView.addGestureRecognizer(imgTap)
     }
 
     @objc private func clickBackButton() {
@@ -110,7 +116,46 @@ class EP_EditVC: EP_BaseVC {
     }
 
     @objc private func onReviseTapped() {
+        view.endEditing(true)
+        guard let user = EP_CurrentUser.shared.user else { return }
+
+        let name = (nameTextField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            presentAlert(message: "Please enter a nickname.")
+            return
+        }
+
+        var newAvatarKey: String?
+        if let image = pendingAvatarImage?.ss_scaled(maxSide: 512),
+           let saved = SS_UserAvatarMedia.saveAvatar(image, userId: user.userId) {
+            newAvatarKey = saved
+            avatarImageName = saved
+        }
+
+        let nameChanged = name != user.name
+        let avatarChanged = newAvatarKey != nil
+        guard nameChanged || avatarChanged else {
+            navigationController?.popViewController(animated: true)
+            return
+        }
+
+        guard UserData.shared.updateUser(
+            userId: user.userId,
+            name: nameChanged ? name : nil,
+            avatar: newAvatarKey
+        ) else {
+            presentAlert(message: "Failed to save profile. Please try again.")
+            return
+        }
+
+        EP_CurrentUser.shared.refreshFromDatabase()
         navigationController?.popViewController(animated: true)
+    }
+
+    private func presentAlert(message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     private let backButton: UIButton = {
@@ -140,6 +185,7 @@ class EP_EditVC: EP_BaseVC {
     private let changePhotoButton: UIButton = {
         let button = UIButton(type: .custom)
         button.setImage("edit_pic".toImage, for: .normal)
+        button.isUserInteractionEnabled = false
         return button
     }()
 
@@ -193,6 +239,7 @@ extension EP_EditVC: UIImagePickerControllerDelegate, UINavigationControllerDele
         didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
     ) {
         if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage {
+            pendingAvatarImage = image
             avatarImageView.image = image
         }
         picker.dismiss(animated: true)

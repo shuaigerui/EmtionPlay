@@ -18,7 +18,7 @@ final class EP_RoomCell: UICollectionViewCell {
 
     static let reuseID = "EP_RoomCell"
 
-    var onJoinTapped: (() -> Void)?
+//    var onJoinTapped: (() -> Void)?
 
     private enum Layout {
         static let cornerRadius: CGFloat = 16
@@ -59,7 +59,7 @@ final class EP_RoomCell: UICollectionViewCell {
             make.bottom.equalTo(joinButton.snp.top).offset(-6)
         }
 
-        joinButton.addTarget(self, action: #selector(onJoinButtonTapped), for: .touchUpInside)
+//        joinButton.addTarget(self, action: #selector(onJoinButtonTapped), for: .touchUpInside)
     }
 
     required init?(coder: NSCoder) {
@@ -97,9 +97,9 @@ final class EP_RoomCell: UICollectionViewCell {
         }
     }
 
-    @objc private func onJoinButtonTapped() {
-        onJoinTapped?()
-    }
+//    @objc private func onJoinButtonTapped() {
+//        onJoinTapped?()
+//    }
 
     private let coverImageView: UIImageView = {
         let view = UIImageView()
@@ -125,7 +125,7 @@ final class EP_RoomCell: UICollectionViewCell {
     private let joinButton: UIButton = {
         let button = UIButton(type: .custom)
         button.setImage("room_join".toImage, for: .normal)
-        button.imageView?.contentMode = .scaleAspectFit
+        button.isUserInteractionEnabled = false
         return button
     }()
 }

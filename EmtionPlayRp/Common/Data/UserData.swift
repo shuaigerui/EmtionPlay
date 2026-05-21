@@ -207,6 +207,14 @@ final class UserData {
         user(userId: ownerUserId)?.followingIds.contains(targetUserId) ?? false
     }
 
+    /// 互相关注（在关注列表且也在粉丝列表中）
+    func areMutualFriends(ownerUserId: String, peerUserId: String) -> Bool {
+        guard !peerUserId.isEmpty,
+              let owner = user(userId: ownerUserId),
+              user(userId: peerUserId) != nil else { return false }
+        return owner.followingIds.contains(peerUserId) && owner.fanIds.contains(peerUserId)
+    }
+
     @discardableResult
     func followUser(ownerUserId: String, targetUserId: String) -> Bool {
         guard ownerUserId != targetUserId,
@@ -285,6 +293,48 @@ final class UserData {
         if let email { user.email = email }
         if let password { user.password = password }
         return updateUser(user)
+    }
+
+    /// 注销账号：删除用户及其帖子，并清理关注/粉丝/拉黑/点赞/隐藏帖/评论等关联数据
+    @discardableResult
+    func deleteAccount(userId: String) -> Bool {
+        guard let index = database.users.firstIndex(where: { $0.userId == userId }) else {
+            return false
+        }
+
+        let deletedPostIds = Set(database.users[index].posts.map(\.postId))
+
+        for i in database.users.indices where database.users[i].userId != userId {
+            var other = database.users[i]
+            other.followingIds.removeAll { $0 == userId }
+            other.fanIds.removeAll { $0 == userId }
+            other.blockedUserIds.removeAll { $0 == userId }
+            other.followCount = other.followingIds.count
+            other.fanCount = other.fanIds.count
+            other.hiddenPostIds.removeAll { deletedPostIds.contains($0) }
+
+            for j in other.posts.indices {
+                var post = other.posts[j]
+                if post.isLiked {
+                    post.isLiked = false
+                    post.likeCount = max(0, post.likeCount - 1)
+                }
+                let commentBefore = post.comments.count
+                post.comments.removeAll { $0.userId == userId }
+                if post.comments.count != commentBefore {
+                    post.commentCount = post.comments.count
+                }
+                other.posts[j] = post
+            }
+            database.users[i] = other
+        }
+
+        database.users.remove(at: index)
+        save()
+
+        EP_ChatStore.shared.deleteAllForUser(userId: userId)
+        SS_UserAvatarMedia.removeSavedAvatarIfPresent(userId: userId)
+        return true
     }
 
     // MARK: - 帖子（写入对应用户的 posts）

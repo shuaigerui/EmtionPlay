@@ -179,7 +179,7 @@ extension EP_ChatVC: UITableViewDataSource, UITableViewDelegate {
             messages[indexPath.row].hasUnread = false
             tableView.reloadRows(at: [indexPath], with: .none)
         }
-        navigationController?.pushViewController(EP_ChatRoomVC(chatItem: item), animated: true)
+        EP_ChatRoomVC.show(from: self, chatItem: item)
     }
 
     func tableView(

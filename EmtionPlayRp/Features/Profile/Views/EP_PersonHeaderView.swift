@@ -116,14 +116,14 @@ final class EP_PersonHeaderView: UIView {
         }
 
         moreButton.addTarget(self, action: #selector(onMoreButtonTapped), for: .touchUpInside)
-        friendsStatView.isUserInteractionEnabled = true
-        fanStatView.isUserInteractionEnabled = true
-        friendsStatView.addGestureRecognizer(
-            UITapGestureRecognizer(target: self, action: #selector(onFriendsStatTapped))
-        )
-        fanStatView.addGestureRecognizer(
-            UITapGestureRecognizer(target: self, action: #selector(onFanStatTapped))
-        )
+//        friendsStatView.isUserInteractionEnabled = true
+//        fanStatView.isUserInteractionEnabled = true
+//        friendsStatView.addGestureRecognizer(
+//            UITapGestureRecognizer(target: self, action: #selector(onFriendsStatTapped))
+//        )
+//        fanStatView.addGestureRecognizer(
+//            UITapGestureRecognizer(target: self, action: #selector(onFanStatTapped))
+//        )
     }
 
     required init?(coder: NSCoder) {
