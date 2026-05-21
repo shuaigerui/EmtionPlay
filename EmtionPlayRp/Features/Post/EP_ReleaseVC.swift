@@ -5,9 +5,28 @@
 //  Created by  mac on 2026/5/19.
 //
 
+import Toast_Swift
 import UIKit
+import UniformTypeIdentifiers
 
 class EP_ReleaseVC: EP_BaseVC {
+
+    private enum PickedMedia {
+        case image(UIImage)
+        case video(URL)
+    }
+
+    private enum ToastMessage {
+        static let emptyContent = "Please enter your content first."
+        static let noMedia = "Please add a photo or video."
+        static let insufficientCoins = "You need at least 10 coins. Please recharge first."
+        static let publishFailed = "Failed to publish. Please try again."
+        static let publishSuccess = "Posted successfully!"
+    }
+
+    private static let postCost = 10
+
+    private var pickedMedia: PickedMedia?
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -103,12 +122,82 @@ class EP_ReleaseVC: EP_BaseVC {
         picker.sourceType = .photoLibrary
         picker.delegate = self
         picker.allowsEditing = true
+        picker.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
         present(picker, animated: true)
     }
 
     @objc private func onSubmitTapped() {
-        // TODO: Submit post
+        let content = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else {
+            view.makeToast(ToastMessage.emptyContent)
+            return
+        }
+        guard pickedMedia != nil else {
+            view.makeToast(ToastMessage.noMedia)
+            return
+        }
+        guard let currentUser = EP_CurrentUser.shared.user, currentUser.coins >= Self.postCost else {
+            view.makeToast(ToastMessage.insufficientCoins)
+            return
+        }
+
+        guard let post = buildPost(content: content, user: currentUser) else {
+            view.makeToast(ToastMessage.publishFailed)
+            return
+        }
+        guard UserData.shared.addPost(post, toUserId: currentUser.userId) else {
+            view.makeToast(ToastMessage.publishFailed)
+            return
+        }
+        let newCoins = currentUser.coins - Self.postCost
+        guard UserData.shared.updateUser(userId: currentUser.userId, coins: newCoins) else {
+            view.makeToast(ToastMessage.publishFailed)
+            return
+        }
+        EP_CurrentUser.shared.refreshFromDatabase()
+        view.makeToast(ToastMessage.publishSuccess)
         navigationController?.popViewController(animated: true)
+    }
+
+    private func buildPost(content: String, user: EP_UserModel) -> EP_PostModel? {
+        let postId = "post_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString.prefix(6).lowercased())"
+        var img = ""
+        var video = ""
+
+        switch pickedMedia {
+        case .image(let image):
+            guard let base = SS_PublishedPostMedia.savePhoto(image) else { return nil }
+            img = base
+        case .video(let url):
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess { url.stopAccessingSecurityScopedResource() }
+            }
+            guard let base = SS_PublishedPostMedia.saveVideo(from: url) else { return nil }
+            video = base
+        case .none:
+            return nil
+        }
+
+        return EP_PostModel(
+            postId: postId,
+            userId: user.userId,
+            authorName: user.name,
+            authorAvatar: user.avatar,
+            coverImage: "post_temp",
+            img: img,
+            video: video,
+            content: content,
+            isLiked: false,
+            likeCount: 0,
+            commentCount: 0,
+            comments: []
+        )
+    }
+
+    private func applyMediaPreview(image: UIImage) {
+        addMediaButton.setImage(image, for: .normal)
+        addMediaButton.imageView?.contentMode = .scaleAspectFill
     }
 
     private func updatePlaceholderVisibility() {
@@ -198,10 +287,22 @@ extension EP_ReleaseVC: UIImagePickerControllerDelegate, UINavigationControllerD
         _ picker: UIImagePickerController,
         didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
     ) {
-        if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage {
-            addMediaButton.setImage(image, for: .normal)
-        }
         picker.dismiss(animated: true)
+
+        if let mediaURL = info[.mediaURL] as? URL {
+            pickedMedia = .video(mediaURL)
+            if let thumb = SS_BundleResourceMedia.videoFirstFrame(url: mediaURL) {
+                applyMediaPreview(image: thumb)
+            } else {
+                addMediaButton.setImage("release_add".toImage, for: .normal)
+            }
+            return
+        }
+
+        if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage {
+            pickedMedia = .image(image)
+            applyMediaPreview(image: image)
+        }
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {

@@ -115,6 +115,7 @@ extension EP_PostModel {
 
     var feedItem: EP_PostFeedItem {
         EP_PostFeedItem(
+            postId: postId,
             userId: userId,
             coverImageName: coverImage,
             img: img,
@@ -145,15 +146,15 @@ extension EP_PostCommentModel {
 extension EP_PostFeedItem {
 
     func toPostModel(
-        postId: String = UUID().uuidString,
+        postId: String? = nil,
         userId: String = "",
         likeCount: Int = 0,
         commentCount: Int = 0,
         comments: [EP_PostCommentModel] = []
     ) -> EP_PostModel {
         EP_PostModel(
-            postId: postId,
-            userId: userId,
+            postId: postId ?? (self.postId.isEmpty ? UUID().uuidString : self.postId),
+            userId: userId.isEmpty ? self.userId : userId,
             authorName: userName,
             authorAvatar: avatarImageName,
             coverImage: coverImageName,

@@ -45,11 +45,7 @@ struct EP_PersonHeaderModel {
 
 final class EP_PersonHeaderView: UIView {
 
-    static let preferredHeight: CGFloat = 404
-
-    private enum Layout {
-        static let coverBottomRightRadius: CGFloat = 56
-    }
+    static let preferredHeight: CGFloat = 670
 
     var onMoreTapped: (() -> Void)?
     var onFriendsTapped: (() -> Void)?
@@ -70,7 +66,7 @@ final class EP_PersonHeaderView: UIView {
 
         coverImageView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
-            make.bottom.equalTo(safeAreaLayoutGuide.snp.top).offset(180)
+            make.bottom.equalTo(safeAreaLayoutGuide.snp.top).offset(435)
         }
 
         moreButton.snp.makeConstraints { make in
@@ -81,30 +77,30 @@ final class EP_PersonHeaderView: UIView {
 
         avatarImageView.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(18)
-            make.top.equalTo(coverImageView.snp.bottom).offset(-56)
-            make.width.height.equalTo(112)
-            make.width.equalTo(avatarImageView.snp.height)
+            make.top.equalTo(moreButton.snp.bottom).offset(345)
+            make.width.height.equalTo(98)
         }
-        avatarImageView.setContentHuggingPriority(.required, for: .horizontal)
-        avatarImageView.setContentHuggingPriority(.required, for: .vertical)
-        avatarImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
-        avatarImageView.setContentCompressionResistancePriority(.required, for: .vertical)
+//        avatarImageView.setContentHuggingPriority(.required, for: .horizontal)
+//        avatarImageView.setContentHuggingPriority(.required, for: .vertical)
+//        avatarImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+//        avatarImageView.setContentCompressionResistancePriority(.required, for: .vertical)
 
         nameLabel.snp.makeConstraints { make in
             make.leading.equalTo(avatarImageView.snp.trailing).offset(12)
-            make.top.equalTo(avatarImageView.snp.top).offset(36)
+            make.centerY.equalTo(avatarImageView)
             make.trailing.lessThanOrEqualTo(moreButton.snp.leading).offset(-8)
         }
 
         badgeImageView.snp.makeConstraints { make in
             make.leading.equalTo(nameLabel.snp.trailing).offset(6)
             make.centerY.equalTo(nameLabel)
-            make.size.equalTo(28)
+            make.width.equalTo(41)
+            make.height.equalTo(32)
         }
 
         statsCardView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(16)
-            make.top.equalTo(avatarImageView.snp.bottom).offset(17)
+            make.top.equalTo(avatarImageView.snp.bottom).offset(12)
             make.height.equalTo(76)
             make.bottom.equalToSuperview().inset(16)
         }
@@ -139,7 +135,7 @@ final class EP_PersonHeaderView: UIView {
         let side = min(avatarImageView.bounds.width, avatarImageView.bounds.height)
         avatarImageView.layer.cornerRadius = side / 2
 
-        coverImageView.layer.cornerRadius = Layout.coverBottomRightRadius
+        coverImageView.layer.cornerRadius = 160
         coverImageView.layer.maskedCorners = [.layerMaxXMaxYCorner]
         coverImageView.clipsToBounds = true
     }
@@ -188,8 +184,8 @@ final class EP_PersonHeaderView: UIView {
         let view = UIImageView()
         view.contentMode = .scaleAspectFill
         view.clipsToBounds = true
-        view.layer.borderWidth = 3
-        view.layer.borderColor = UIColor.white.cgColor
+        view.layer.cornerRadius = 49
+        view.layer.masksToBounds = true
         return view
     }()
 
@@ -202,7 +198,7 @@ final class EP_PersonHeaderView: UIView {
 
     private let badgeImageView: UIImageView = {
         let view = UIImageView()
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         view.isHidden = true
         return view
     }()

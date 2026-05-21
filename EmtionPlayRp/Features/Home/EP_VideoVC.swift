@@ -140,6 +140,14 @@ class EP_VideoVC: EP_BaseVC {
     private func setupEvents() {
         backButton.addTarget(self, action: #selector(clickBackButton), for: .touchUpInside)
         likeButton.addTarget(self, action: #selector(onLikeTapped), for: .touchUpInside)
+        moreButton.addTarget(self, action: #selector(onMoreTapped), for: .touchUpInside)
+    }
+
+    @objc private func onMoreTapped() {
+        ep_presentReportSheet { [weak self] option in
+            guard let self, option == .block, !self.postItem.userId.isEmpty else { return }
+            UserData.shared.setUserBlock(userId: self.postItem.userId, isBlock: true)
+        }
     }
 
     private func applyContent() {

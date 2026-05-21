@@ -178,6 +178,16 @@ extension EP_PostVC: UITableViewDataSource, UITableViewDelegate {
             guard let self else { return }
             EP_PersonVC.show(from: self, userId: item.userId)
         }
+        cell.onMoreTapped = { [weak self] in
+            self?.ep_presentReportSheet { option in
+                if option == .block, !item.userId.isEmpty {
+                    UserData.shared.setUserBlock(userId: item.userId, isBlock: true)
+                }
+            }
+        }
+        cell.onPostDeleted = { [weak self] in
+            self?.loadData()
+        }
         return cell
     }
     
@@ -186,14 +196,16 @@ extension EP_PostVC: UITableViewDataSource, UITableViewDelegate {
         guard imagePosts.indices.contains(indexPath.row) else { return }
         let post = imagePosts[indexPath.row]
         navigationController?.pushViewController(
-            EP_DetailVC(item: post.feedItem, comments: post.detailCommentItems),
+            EP_DetailVC(post: post),
             animated: true
         )
     }
 
     private func toggleLike(at index: Int) {
-        guard feedItems.indices.contains(index) else { return }
-        feedItems[index].isLiked.toggle()
+        guard imagePosts.indices.contains(index) else { return }
+        imagePosts[index].isLiked.toggle()
+        UserData.shared.updatePost(imagePosts[index])
+        feedItems[index] = imagePosts[index].feedItem
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
     }
 }

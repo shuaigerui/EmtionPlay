@@ -8,6 +8,7 @@
 import UIKit
 
 struct EP_PostFeedItem {
+    let postId: String
     let userId: String
     let coverImageName: String
     let img: String
@@ -18,6 +19,7 @@ struct EP_PostFeedItem {
     var isLiked: Bool
 
     init(
+        postId: String = "",
         userId: String = "",
         coverImageName: String,
         img: String = "",
@@ -27,6 +29,7 @@ struct EP_PostFeedItem {
         content: String,
         isLiked: Bool
     ) {
+        self.postId = postId
         self.userId = userId
         self.coverImageName = coverImageName
         self.img = img
@@ -48,6 +51,13 @@ final class EP_PostFeedCell: UITableViewCell {
 
     var onLikeTapped: (() -> Void)?
     var onAvatarTapped: (() -> Void)?
+    /// 非本人动态：举报等
+    var onMoreTapped: (() -> Void)?
+    /// 本人动态删除成功后回调（刷新列表）
+    var onPostDeleted: (() -> Void)?
+
+    private var postId: String = ""
+    private var isOwnPost = false
 
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -100,6 +110,7 @@ final class EP_PostFeedCell: UITableViewCell {
         }
 
         likeButton.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
+        moreButton.addTarget(self, action: #selector(onMoreButtonTapped), for: .touchUpInside)
 
         avatarImageView.isUserInteractionEnabled = true
         let avatarTap = UITapGestureRecognizer(target: self, action: #selector(onAvatarTap))
@@ -111,11 +122,18 @@ final class EP_PostFeedCell: UITableViewCell {
     }
 
     func configure(with item: EP_PostFeedItem) {
+        postId = item.postId
+        let currentUserId = EP_CurrentUser.shared.user?.userId ?? ""
+        isOwnPost = !item.userId.isEmpty && item.userId == currentUserId
+
         coverImageView.image = item.resolvedCoverImage ?? item.coverImageName.toImage
         avatarImageView.image = item.avatarImageName.toAvatarImage ?? item.avatarImageName.toImage
         nameLabel.text = item.userName
         contentLabel.text = item.content
         likeButton.isSelected = item.isLiked
+
+        chatButton.isHidden = isOwnPost
+        likeButton.isHidden = isOwnPost
     }
 
     @objc private func onLikeButtonTapped() {
@@ -124,6 +142,34 @@ final class EP_PostFeedCell: UITableViewCell {
 
     @objc private func onAvatarTap() {
         onAvatarTapped?()
+    }
+
+    @objc private func onMoreButtonTapped() {
+        if isOwnPost {
+            presentDeleteConfirmation()
+        } else {
+            onMoreTapped?()
+        }
+    }
+
+    private func presentDeleteConfirmation() {
+        guard !postId.isEmpty, let viewController = ep_viewController else { return }
+        let alert = UIAlertController(
+            title: "Delete Post",
+            message: "Are you sure you want to delete this post?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.deleteOwnPost()
+        })
+        viewController.present(alert, animated: true)
+    }
+
+    private func deleteOwnPost() {
+        guard !postId.isEmpty, UserData.shared.deletePost(postId: postId) else { return }
+        EP_CurrentUser.shared.refreshFromDatabase()
+        onPostDeleted?()
     }
 
     private let coverImageView: UIImageView = {
@@ -188,5 +234,20 @@ final class EP_PostFeedCell: UITableViewCell {
         let button = UIButton(type: .custom)
         button.setImage(imageName.toImage, for: .normal)
         return button
+    }
+}
+
+// MARK: - Responder chain
+
+private extension UIView {
+    var ep_viewController: UIViewController? {
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let viewController = current as? UIViewController {
+                return viewController
+            }
+            responder = current.next
+        }
+        return nil
     }
 }

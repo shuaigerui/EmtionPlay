@@ -155,10 +155,7 @@ extension EP_HomeVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLay
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let homeItem = feedItems[indexPath.item]
         guard let post = UserData.shared.post(postId: homeItem.postId) else { return }
-        let detailVC = EP_DetailVC(
-            item: post.feedItem,
-            comments: post.detailCommentItems
-        )
+        let detailVC = EP_DetailVC(post: post)
         navigationController?.pushViewController(detailVC, animated: true)
     }
 

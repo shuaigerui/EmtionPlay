@@ -11,10 +11,17 @@ class EP_PersonVC: EP_BaseVC {
 
     private enum Layout {
         static let rowHeight: CGFloat = 250
+        static let menuBottomInset: CGFloat = 16
+        static let menuBarHeight: CGFloat = 56
     }
 
     private var headerModel: EP_PersonHeaderModel
     private var feedItems: [EP_PostFeedItem]
+    private var peerUserId: String = ""
+    private var peerName: String = ""
+    private var peerAvatarImageName: String = ""
+    private var videoPostItem: EP_PostFeedItem?
+    private var isFollowing = false
 
     init(
         headerModel: EP_PersonHeaderModel = .preview,
@@ -28,6 +35,10 @@ class EP_PersonVC: EP_BaseVC {
 
     convenience init(user: EP_UserModel) {
         self.init(headerModel: user.personHeaderModel, feedItems: user.postFeedItems)
+        peerUserId = user.userId
+        peerName = user.name
+        peerAvatarImageName = user.avatar
+        videoPostItem = user.posts.first(where: { !$0.video.isEmpty })?.feedItem
     }
 
     /// 根据 userId 打开对方个人主页
@@ -61,12 +72,26 @@ class EP_PersonVC: EP_BaseVC {
 
     private func setupUI() {
         view.addSubview(tableView)
+        view.addSubview(menuView)
         view.addSubview(backButton)
+
+        let bottomInset = Layout.menuBarHeight + Layout.menuBottomInset + 12
+        tableView.contentInset.bottom = bottomInset
+        if #available(iOS 13.0, *) {
+            tableView.verticalScrollIndicatorInsets.bottom = bottomInset
+        } else {
+            tableView.scrollIndicatorInsets.bottom = bottomInset
+        }
     }
 
     private func setupConstraints() {
         tableView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
+        }
+
+        menuView.snp.makeConstraints { make in
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-20)
         }
 
         backButton.snp.makeConstraints { make in
@@ -85,7 +110,10 @@ class EP_PersonVC: EP_BaseVC {
         backButton.addTarget(self, action: #selector(clickBackButton), for: .touchUpInside)
 
         personHeaderView.onMoreTapped = { [weak self] in
-            // TODO: Show more actions
+            self?.ep_presentReportSheet { [weak self] option in
+                guard let self, option == .block, !self.peerUserId.isEmpty else { return }
+                UserData.shared.setUserBlock(userId: self.peerUserId, isBlock: true)
+            }
         }
         personHeaderView.onFriendsTapped = { [weak self] in
             self?.navigationController?.pushViewController(EP_UserListVC(mode: .follow), animated: true)
@@ -93,6 +121,37 @@ class EP_PersonVC: EP_BaseVC {
         personHeaderView.onFanTapped = { [weak self] in
             self?.navigationController?.pushViewController(EP_UserListVC(mode: .fan), animated: true)
         }
+
+        menuView.isFollowing = isFollowing
+        menuView.onFollowTapped = { [weak self] in
+            self?.toggleFollow()
+        }
+        menuView.onVideoTapped = { [weak self] in
+            self?.openPeerVideoIfAvailable()
+        }
+        menuView.onChatTapped = { [weak self] in
+            self?.openChatRoom()
+        }
+    }
+
+    private func toggleFollow() {
+        isFollowing.toggle()
+        menuView.isFollowing = isFollowing
+    }
+
+    private func openChatRoom() {
+        navigationController?.pushViewController(
+            EP_ChatRoomVC(peerName: peerName, peerAvatarImageName: peerAvatarImageName),
+            animated: true
+        )
+    }
+
+    private func openPeerVideoIfAvailable() {
+        EP_VideoRoomVC.show(
+            from: self,
+            peerName: peerName,
+            peerAvatarImageName: peerAvatarImageName
+        )
     }
 
     private func updateTableHeaderLayoutIfNeeded() {
@@ -106,6 +165,13 @@ class EP_PersonVC: EP_BaseVC {
 
     @objc private func clickBackButton() {
         navigationController?.popViewController(animated: true)
+    }
+
+    private func reloadFeedItems() {
+        guard !peerUserId.isEmpty,
+              let user = UserData.shared.user(userId: peerUserId) else { return }
+        feedItems = user.postFeedItems
+        tableView.reloadData()
     }
 
     private func toggleLike(at index: Int) {
@@ -143,6 +209,8 @@ class EP_PersonVC: EP_BaseVC {
         button.setImage("common_back".toImage, for: .normal)
         return button
     }()
+
+    private let menuView = EP_PersonMenuView()
 
     private static let defaultFeedItems: [EP_PostFeedItem] = [
         EP_PostFeedItem(
@@ -193,14 +261,19 @@ extension EP_PersonVC: UITableViewDataSource, UITableViewDelegate {
             guard let self else { return }
             EP_PersonVC.show(from: self, userId: item.userId)
         }
+        cell.onMoreTapped = { [weak self] in
+            self?.ep_presentReportSheet()
+        }
+        cell.onPostDeleted = { [weak self] in
+            self?.reloadFeedItems()
+        }
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        navigationController?.pushViewController(
-            EP_DetailVC(item: feedItems[indexPath.row]),
-            animated: true
-        )
+        let item = feedItems[indexPath.row]
+        guard let post = UserData.shared.post(postId: item.postId) else { return }
+        navigationController?.pushViewController(EP_DetailVC(post: post), animated: true)
     }
 }

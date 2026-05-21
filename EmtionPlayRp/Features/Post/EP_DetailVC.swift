@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/19.
 //
 
+import Toast_Swift
 import UIKit
 
 class EP_DetailVC: EP_BaseVC {
@@ -14,15 +15,14 @@ class EP_DetailVC: EP_BaseVC {
         static let inputBarHeight: CGFloat = 64
     }
 
+    private let postId: String
     private var postItem: EP_PostFeedItem
     private var comments: [EP_DetailCommentItem]
 
-    init(
-        item: EP_PostFeedItem,
-        comments: [EP_DetailCommentItem] = EP_DetailVC.defaultComments
-    ) {
-        self.postItem = item
-        self.comments = comments
+    init(post: EP_PostModel) {
+        postId = post.postId
+        postItem = post.feedItem
+        comments = post.detailCommentItems
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -96,6 +96,9 @@ class EP_DetailVC: EP_BaseVC {
         header.onCoverTapped = { [weak self] in
             self?.openVideoPlayerIfNeeded()
         }
+        header.onMoreTapped = { [weak self] in
+            self?.ep_presentReportSheet()
+        }
         tableView.tableHeaderView = header
     }
 
@@ -113,43 +116,52 @@ class EP_DetailVC: EP_BaseVC {
     }
 
     private func togglePostLike() {
-        postItem.isLiked.toggle()
+        guard var post = UserData.shared.post(postId: postId) else { return }
+        let wasLiked = post.isLiked
+        post.isLiked.toggle()
+        if post.isLiked, !wasLiked {
+            post.likeCount += 1
+        } else if !post.isLiked, wasLiked {
+            post.likeCount = max(0, post.likeCount - 1)
+        }
+        guard UserData.shared.updatePost(post) else { return }
+        applyPost(post)
         (tableView.tableHeaderView as? EP_DetailHeaderView)?.configure(with: postItem)
     }
 
     private func appendComment(_ text: String) {
-        let item = EP_DetailCommentItem(
-            avatarImageName: "home_top",
-            userName: "Me",
-            content: text
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard var post = UserData.shared.post(postId: postId),
+              let currentUser = EP_CurrentUser.shared.user else { return }
+
+        let comment = EP_PostCommentModel(
+            commentId: "c_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString.prefix(6).lowercased())",
+            userId: currentUser.userId,
+            userName: currentUser.name,
+            avatar: currentUser.avatar,
+            content: trimmed,
+            createdAtText: "Just now"
         )
-        comments.append(item)
+        post.comments.append(comment)
+        post.commentCount = post.comments.count
+        guard UserData.shared.updatePost(post) else { return }
+
+        applyPost(post)
         tableView.reloadData()
         let indexPath = IndexPath(row: comments.count - 1, section: 0)
         tableView.scrollToRow(at: indexPath, at: .bottom, animated: true)
+        view.makeToast("Comment posted successfully.")
+    }
+
+    private func applyPost(_ post: EP_PostModel) {
+        postItem = post.feedItem
+        comments = post.detailCommentItems
     }
 
     @objc private func clickBackButton() {
         navigationController?.popViewController(animated: true)
     }
-
-    private static let defaultComments: [EP_DetailCommentItem] = [
-        EP_DetailCommentItem(
-            avatarImageName: "home_top",
-            userName: "Nana",
-            content: "An hour agoAn hour agoAn hour agoAn hour agoAn hour ago"
-        ),
-        EP_DetailCommentItem(
-            avatarImageName: "home_top",
-            userName: "Nana",
-            content: "An hour agoAn hour agoAn hour agoAn hour agoAn hour ago"
-        ),
-        EP_DetailCommentItem(
-            avatarImageName: "home_top",
-            userName: "Nana",
-            content: "An hour agoAn hour agoAn hour agoAn hour agoAn hour ago"
-        ),
-    ]
 
     private lazy var tableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .plain)

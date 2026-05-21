@@ -11,6 +11,7 @@ class EP_DetailHeaderView: UIView {
 
     var onLikeTapped: (() -> Void)?
     var onCoverTapped: (() -> Void)?
+    var onMoreTapped: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -71,6 +72,7 @@ class EP_DetailHeaderView: UIView {
         }
 
         likeButton.addTarget(self, action: #selector(onLikeButtonTapped), for: .touchUpInside)
+        moreButton.addTarget(self, action: #selector(onMoreButtonTapped), for: .touchUpInside)
         playView.isUserInteractionEnabled = false
         let coverTap = UITapGestureRecognizer(target: self, action: #selector(handleCoverTap))
         coverImageView.addGestureRecognizer(coverTap)
@@ -91,6 +93,10 @@ class EP_DetailHeaderView: UIView {
 
     @objc private func onLikeButtonTapped() {
         onLikeTapped?()
+    }
+
+    @objc private func onMoreButtonTapped() {
+        onMoreTapped?()
     }
 
     @objc private func handleCoverTap() {

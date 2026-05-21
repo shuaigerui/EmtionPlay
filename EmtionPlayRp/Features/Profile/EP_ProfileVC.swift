@@ -175,14 +175,19 @@ extension EP_ProfileVC: UITableViewDataSource, UITableViewDelegate {
             guard let self else { return }
             EP_PersonVC.show(from: self, userId: item.userId)
         }
+        cell.onMoreTapped = { [weak self] in
+            self?.ep_presentReportSheet()
+        }
+        cell.onPostDeleted = { [weak self] in
+            self?.loadData()
+        }
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        navigationController?.pushViewController(
-            EP_DetailVC(item: activeItems[indexPath.row]),
-            animated: true
-        )
+        let item = activeItems[indexPath.row]
+        guard let post = UserData.shared.post(postId: item.postId) else { return }
+        navigationController?.pushViewController(EP_DetailVC(post: post), animated: true)
     }
 }
