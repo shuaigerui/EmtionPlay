@@ -23,7 +23,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ToastManager.shared.position = .center
         
         initializeWindow()
-        
+        EP_IAPManager.shared.start()
+
         return true
     }
 

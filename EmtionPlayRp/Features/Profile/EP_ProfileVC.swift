@@ -76,7 +76,14 @@ class EP_ProfileVC: EP_BaseVC {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        loadData()
+        EP_NetworkTool.shared.fetchHuaPl { result in
+            switch result {
+            case .success(_):
+                self.loadData()
+            case .failure(_):
+                self.loadData()
+            }
+        }
     }
 
     override func viewDidLoad() {
@@ -103,8 +110,9 @@ class EP_ProfileVC: EP_BaseVC {
         )
         profileHeaderView.configure(with: headerModel)
 
-        releaseItems = user.posts.map(\.feedItem)
-        likeItems = user.posts.filter(\.isLiked).map(\.feedItem)
+        let viewerId = user.userId
+        releaseItems = user.posts.map { $0.feedItem(viewerUserId: viewerId) }
+        likeItems = UserData.shared.likedPosts(for: viewerId).map { $0.feedItem(viewerUserId: viewerId) }
         tableView.reloadData()
     }
 
@@ -130,11 +138,11 @@ class EP_ProfileVC: EP_BaseVC {
     }
 
     private func toggleLike(at index: Int) {
-        var items = activeItems
-        guard items.indices.contains(index) else { return }
-        items[index].isLiked.toggle()
-        activeItems = items
-        tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+        guard let viewerId = EP_CurrentUser.shared.user?.userId,
+              activeItems.indices.contains(index) else { return }
+        let postId = activeItems[index].postId
+        UserData.shared.toggleLikePost(postId: postId, ownerUserId: viewerId)
+        loadData()
     }
 
     private lazy var tableView: UITableView = {

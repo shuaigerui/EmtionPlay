@@ -41,12 +41,13 @@ class EP_PersonVC: EP_BaseVC {
     }
 
     convenience init(user: EP_UserModel) {
-        let items = UserData.shared.visiblePosts(user.posts).map(\.feedItem)
+        let viewerId = EP_CurrentUser.shared.user?.userId
+        let items = UserData.shared.visiblePosts(user.posts).map { $0.feedItem(viewerUserId: viewerId) }
         self.init(headerModel: user.personHeaderModel, feedItems: items)
         peerUserId = user.userId
         peerName = user.name
         peerAvatarImageName = user.avatar
-        videoPostItem = user.posts.first(where: { !$0.video.isEmpty })?.feedItem
+        videoPostItem = user.posts.first(where: { !$0.video.isEmpty })?.feedItem(viewerUserId: viewerId)
     }
 
     /// 根据 userId 打开对方个人主页
@@ -195,14 +196,16 @@ class EP_PersonVC: EP_BaseVC {
     private func reloadFeedItems() {
         guard !peerUserId.isEmpty,
               let user = UserData.shared.user(userId: peerUserId) else { return }
-        feedItems = UserData.shared.visiblePosts(user.posts).map(\.feedItem)
+        let viewerId = EP_CurrentUser.shared.user?.userId
+        feedItems = UserData.shared.visiblePosts(user.posts).map { $0.feedItem(viewerUserId: viewerId) }
         tableView.reloadData()
     }
 
     private func toggleLike(at index: Int) {
-        guard feedItems.indices.contains(index) else { return }
-        feedItems[index].isLiked.toggle()
-        tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+        guard feedItems.indices.contains(index),
+              let viewerId = EP_CurrentUser.shared.user?.userId else { return }
+        UserData.shared.toggleLikePost(postId: feedItems[index].postId, ownerUserId: viewerId)
+        reloadFeedItems()
     }
 
     private lazy var personHeaderView: EP_PersonHeaderView = {

@@ -5,17 +5,15 @@
 //  Created by  mac on 2026/5/19.
 //
 
+import Toast_Swift
 import UIKit
 
 class EP_ShopVC: EP_BaseVC {
 
-    private var balance: Int = 123_123
-    private var selectedProductIndex: Int = 1
-
-    private let products: [EP_ShopProductItem] = Array(
-        repeating: EP_ShopProductItem(coinAmount: 10, priceText: "$ 10"),
-        count: 9
-    )
+    private var balance: Int = 0
+    private var selectedProductIndex: Int = 0
+    private var products: [EP_ShopProductItem] = []
+    private var isPurchasing = false
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -27,19 +25,47 @@ class EP_ShopVC: EP_BaseVC {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadBalance()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        products = EP_IAPManager.shared.shopItems()
 
         setupUI()
         setupConstraints()
         setupEvents()
-        updateBalanceText()
+        reloadBalance()
+
+        Task { await refreshStoreProducts() }
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        guard products.indices.contains(selectedProductIndex) else { return }
         let indexPath = IndexPath(item: selectedProductIndex, section: 0)
         collectionView.selectItem(at: indexPath, animated: false, scrollPosition: [])
+    }
+
+    private func reloadBalance() {
+        EP_CurrentUser.shared.refreshFromDatabase()
+        balance = EP_CurrentUser.shared.user?.coins ?? 0
+        updateBalanceText()
+    }
+
+    private func refreshStoreProducts() async {
+        await EP_IAPManager.shared.loadProducts()
+        products = EP_IAPManager.shared.shopItems()
+        collectionView.reloadData()
+        guard products.indices.contains(selectedProductIndex) else { return }
+        collectionView.selectItem(
+            at: IndexPath(item: selectedProductIndex, section: 0),
+            animated: false,
+            scrollPosition: []
+        )
     }
 
     private func setupUI() {
@@ -79,7 +105,7 @@ class EP_ShopVC: EP_BaseVC {
             make.size.equalTo(112)
         }
 
-        let w = (view.frame.width - 32)/2
+        let w = (view.frame.width - 32) / 2
         remainingTitleLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(50)
             make.trailing.equalToSuperview().offset(-w)
@@ -120,7 +146,6 @@ class EP_ShopVC: EP_BaseVC {
     }
 
     private func cellSize(for collectionView: UICollectionView) -> CGSize {
-
         let cellWidth = (UIScreen.main.bounds.width - 42) / 3
         return CGSize(width: cellWidth, height: 80)
     }
@@ -130,10 +155,42 @@ class EP_ShopVC: EP_BaseVC {
     }
 
     @objc private func onConfirmTapped() {
-        guard products.indices.contains(selectedProductIndex) else { return }
+        guard !isPurchasing,
+              products.indices.contains(selectedProductIndex),
+              EP_CurrentUser.shared.user != nil else {
+            if EP_CurrentUser.shared.user == nil {
+                view.makeToast("Please sign in before purchasing.")
+            }
+            return
+        }
+
         let product = products[selectedProductIndex]
-        balance += product.coinAmount
-        updateBalanceText()
+        isPurchasing = true
+        confirmButton.isEnabled = false
+
+        Task { [weak self] in
+            guard let self else { return }
+            defer {
+                Task { @MainActor in
+                    self.isPurchasing = false
+                    self.confirmButton.isEnabled = true
+                }
+            }
+
+            do {
+                let success = try await EP_IAPManager.shared.purchase(productId: product.productId)
+                await MainActor.run {
+                    if success {
+                        self.reloadBalance()
+                        self.view.makeToast("Purchase successful!")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.view.makeToast(error.localizedDescription)
+                }
+            }
+        }
     }
 
     private let backButton: UIButton = {

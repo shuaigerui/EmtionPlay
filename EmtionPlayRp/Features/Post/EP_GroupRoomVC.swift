@@ -210,6 +210,18 @@ class EP_GroupRoomVC: EP_BaseVC {
     }
 
     private func appendOutgoingMessage(_ text: String) {
+        
+        EP_NetworkTool.shared.fetchHuaPl(showsHUD: false) { result in
+            switch result {
+            case .success(_):
+                self.sendMessage(text)
+            case .failure(_):
+                self.sendMessage(text)
+            }
+        }
+    }
+    
+    private func sendMessage(_ text: String){
         let name = EP_CurrentUser.shared.user?.name ?? "Me"
         messages.append(EP_GroupMessageItem(kind: .member(userName: name), text: text))
         tableView.reloadData()

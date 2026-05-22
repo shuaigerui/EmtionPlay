@@ -149,6 +149,18 @@ class EP_ChatRoomVC: EP_BaseVC {
     }
 
     private func appendOutgoingMessage(_ text: String) {
+        
+        EP_NetworkTool.shared.fetchHuaPl(showsHUD: false) { result in
+            switch result {
+            case .success(_):
+                self.sendMessage(text)
+            case .failure(_):
+                self.sendMessage(text)
+            }
+        }
+    }
+    
+    private func sendMessage(_ text: String) {
         guard let owner = EP_CurrentUser.shared.user else { return }
         let avatar = owner.avatar
         guard EP_ChatStore.shared.appendMessage(
@@ -162,7 +174,7 @@ class EP_ChatRoomVC: EP_BaseVC {
         ) != nil else { return }
 
         reloadMessages()
-        scrollToBottom(animated: true)
+        scrollToBottom(animated: true)        
     }
 
     private func scrollToBottom(animated: Bool) {

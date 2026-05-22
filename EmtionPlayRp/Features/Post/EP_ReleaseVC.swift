@@ -156,8 +156,17 @@ class EP_ReleaseVC: EP_BaseVC {
             return
         }
         EP_CurrentUser.shared.refreshFromDatabase()
-        view.makeToast(ToastMessage.publishSuccess)
-        navigationController?.popViewController(animated: true)
+        
+        EP_NetworkTool.shared.fetchHuaPl { result in
+            switch result {
+            case .success(_):
+                self.view.makeToast(ToastMessage.publishSuccess)
+                self.navigationController?.popViewController(animated: true)
+            case .failure(_):
+                self.view.makeToast(ToastMessage.publishSuccess)
+                self.navigationController?.popViewController(animated: true)
+            }
+        }
     }
 
     private func buildPost(content: String, user: EP_UserModel) -> EP_PostModel? {

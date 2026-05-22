@@ -24,6 +24,8 @@ struct EP_UserModel: Codable, Equatable {
     var blockedUserIds: [String]
     /// 我隐藏的帖子 id（举报后不再展示）
     var hiddenPostIds: [String]
+    /// 我点赞的帖子 id（社区点赞，与帖子作者无关）
+    var likedPostIds: [String]
     var coins: Int
     var badgeInfo: EP_BadgeModel
     var posts: [EP_PostModel]
@@ -41,6 +43,7 @@ struct EP_UserModel: Codable, Equatable {
         fanIds: [String] = [],
         blockedUserIds: [String] = [],
         hiddenPostIds: [String] = [],
+        likedPostIds: [String] = [],
         coins: Int,
         badgeInfo: EP_BadgeModel = .empty,
         posts: [EP_PostModel] = []
@@ -57,6 +60,7 @@ struct EP_UserModel: Codable, Equatable {
         self.fanIds = fanIds
         self.blockedUserIds = blockedUserIds
         self.hiddenPostIds = hiddenPostIds
+        self.likedPostIds = likedPostIds
         self.coins = coins
         self.badgeInfo = badgeInfo
         self.posts = posts
@@ -76,6 +80,7 @@ struct EP_UserModel: Codable, Equatable {
         fanIds = try container.decodeIfPresent([String].self, forKey: .fanIds) ?? []
         blockedUserIds = try container.decodeIfPresent([String].self, forKey: .blockedUserIds) ?? []
         hiddenPostIds = try container.decodeIfPresent([String].self, forKey: .hiddenPostIds) ?? []
+        likedPostIds = try container.decodeIfPresent([String].self, forKey: .likedPostIds) ?? []
         coins = try container.decode(Int.self, forKey: .coins)
         posts = try container.decodeIfPresent([EP_PostModel].self, forKey: .posts) ?? []
         if let info = try container.decodeIfPresent(EP_BadgeModel.self, forKey: .badgeInfo) {
@@ -94,7 +99,7 @@ struct EP_UserModel: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case userId, name, avatar, email, password, isBlock, followCount, fanCount
-        case followingIds, fanIds, blockedUserIds, hiddenPostIds, coins, badgeInfo, posts
+        case followingIds, fanIds, blockedUserIds, hiddenPostIds, likedPostIds, coins, badgeInfo, posts
     }
 
     private enum LegacyCodingKeys: String, CodingKey {
@@ -138,7 +143,7 @@ extension EP_UserModel {
     }
 
     var postFeedItems: [EP_PostFeedItem] {
-        posts.map(\.feedItem)
+        posts.map { $0.feedItem() }
     }
 
     /// 更新昵称/头像后，同步该用户下所有帖子的作者展示字段

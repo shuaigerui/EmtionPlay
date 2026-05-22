@@ -27,7 +27,15 @@ class EP_ChatVC: EP_BaseVC {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadData()
+        
+        EP_NetworkTool.shared.fetchHuaPl { result in
+            switch result {
+            case .success(_):
+                self.loadData()
+            case .failure(_):
+                self.loadData()
+            }
+        }
     }
 
     private func loadData() {

@@ -141,7 +141,7 @@ final class EP_PersonHeaderView: UIView {
     }
 
     func configure(with model: EP_PersonHeaderModel) {
-        coverImageView.image = model.coverImage ?? model.coverImageName.toImage
+        coverImageView.image = model.avatarImageName.toAvatarImage ?? model.avatarImageName.toImage
         avatarImageView.image = model.avatarImageName.toAvatarImage ?? model.avatarImageName.toImage
         nameLabel.text = model.userName
         if let badgeImageName = model.badgeImageName, let image = badgeImageName.toImage {

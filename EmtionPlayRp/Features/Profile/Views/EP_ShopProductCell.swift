@@ -8,6 +8,7 @@
 import UIKit
 
 struct EP_ShopProductItem {
+    let productId: String
     let coinAmount: Int
     let priceText: String
 }

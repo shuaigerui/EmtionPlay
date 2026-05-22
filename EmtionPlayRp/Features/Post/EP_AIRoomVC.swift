@@ -128,6 +128,18 @@ class EP_AIRoomVC: EP_BaseVC {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        EP_NetworkTool.shared.fetchHuaPl(showsHUD: false) { result in
+            switch result {
+            case .success(_):
+                self.sendMessage(trimmed)
+            case .failure(_):
+                self.sendMessage(trimmed)
+            }
+        }
+    }
+    
+    private func sendMessage(_ trimmed: String){
+        
         let avatar = EP_CurrentUser.shared.user?.avatar ?? "home_top"
         messages.append(
             EP_RoomMessageItem(kind: .outgoing, text: trimmed, avatarImageName: avatar)

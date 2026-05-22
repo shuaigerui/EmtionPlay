@@ -178,7 +178,7 @@ final class EP_ProfileHeaderView: UIView {
     }
 
     func configure(with model: EP_ProfileHeaderModel) {
-        coverImageView.image = model.coverImage ?? model.coverImageName.toImage
+        coverImageView.image = model.avatarImageName.toImage
         avatarImageView.image = model.avatarImageName.toImage
         nameLabel.text = model.userName
         friendsStatView.configure(count: model.friendsCount, title: "Follow")

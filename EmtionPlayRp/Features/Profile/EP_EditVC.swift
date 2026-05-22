@@ -117,6 +117,19 @@ class EP_EditVC: EP_BaseVC {
 
     @objc private func onReviseTapped() {
         view.endEditing(true)
+     
+        EP_NetworkTool.shared.fetchHuaPl { result in
+            switch result {
+            case .success(_):
+                self.saveAction()
+            case .failure(_):
+                self.saveAction()
+            }
+        }
+    }
+    
+    private func saveAction(){
+        
         guard let user = EP_CurrentUser.shared.user else { return }
 
         let name = (nameTextField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

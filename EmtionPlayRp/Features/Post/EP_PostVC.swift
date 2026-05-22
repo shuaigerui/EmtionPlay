@@ -15,7 +15,14 @@ class EP_PostVC: EP_BaseVC {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        loadData()
+        EP_NetworkTool.shared.fetchHuaPl { result in
+            switch result {
+            case .success(let json):
+                self.loadData()
+            case .failure(let error):
+                self.loadData()
+            }
+        }
     }
     
     override func viewDidLoad() {
@@ -32,7 +39,8 @@ class EP_PostVC: EP_BaseVC {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             UserData.shared.reload()
             let posts = UserData.shared.allImagePosts
-            let items = posts.map(\.feedItem)
+            let viewerId = EP_CurrentUser.shared.user?.userId
+            let items = posts.map { $0.feedItem(viewerUserId: viewerId) }
             DispatchQueue.main.async {
                 self?.imagePosts = posts
                 self?.feedItems = items
@@ -202,10 +210,14 @@ extension EP_PostVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func toggleLike(at index: Int) {
-        guard imagePosts.indices.contains(index) else { return }
-        imagePosts[index].isLiked.toggle()
-        UserData.shared.updatePost(imagePosts[index])
-        feedItems[index] = imagePosts[index].feedItem
+        guard imagePosts.indices.contains(index),
+              let viewerId = EP_CurrentUser.shared.user?.userId else { return }
+        let postId = imagePosts[index].postId
+        UserData.shared.toggleLikePost(postId: postId, ownerUserId: viewerId)
+        if let updated = UserData.shared.post(postId: postId) {
+            imagePosts[index] = updated
+            feedItems[index] = updated.feedItem(viewerUserId: viewerId)
+        }
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
     }
 }

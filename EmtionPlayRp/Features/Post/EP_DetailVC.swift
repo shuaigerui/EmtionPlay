@@ -21,7 +21,8 @@ class EP_DetailVC: EP_BaseVC {
 
     init(post: EP_PostModel) {
         postId = post.postId
-        postItem = post.feedItem
+        let viewerId = EP_CurrentUser.shared.user?.userId
+        postItem = post.feedItem(viewerUserId: viewerId)
         comments = post.detailCommentItems
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
@@ -39,6 +40,11 @@ class EP_DetailVC: EP_BaseVC {
         setupConstraints()
         setupEvents()
         setupTableHeader()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadPostFromDatabase()
     }
 
     override func viewDidLayoutSubviews() {
@@ -120,15 +126,9 @@ class EP_DetailVC: EP_BaseVC {
     }
 
     private func togglePostLike() {
-        guard var post = UserData.shared.post(postId: postId) else { return }
-        let wasLiked = post.isLiked
-        post.isLiked.toggle()
-        if post.isLiked, !wasLiked {
-            post.likeCount += 1
-        } else if !post.isLiked, wasLiked {
-            post.likeCount = max(0, post.likeCount - 1)
-        }
-        guard UserData.shared.updatePost(post) else { return }
+        guard let viewerId = EP_CurrentUser.shared.user?.userId else { return }
+        UserData.shared.toggleLikePost(postId: postId, ownerUserId: viewerId)
+        guard let post = UserData.shared.post(postId: postId) else { return }
         applyPost(post)
         (tableView.tableHeaderView as? EP_DetailHeaderView)?.configure(with: postItem)
     }
@@ -158,8 +158,17 @@ class EP_DetailVC: EP_BaseVC {
         view.makeToast("Comment posted successfully.")
     }
 
+    private func reloadPostFromDatabase() {
+        UserData.shared.reload()
+        guard let post = UserData.shared.post(postId: postId) else { return }
+        applyPost(post)
+        (tableView.tableHeaderView as? EP_DetailHeaderView)?.configure(with: postItem)
+        tableView.reloadData()
+    }
+
     private func applyPost(_ post: EP_PostModel) {
-        postItem = post.feedItem
+        let viewerId = EP_CurrentUser.shared.user?.userId
+        postItem = post.feedItem(viewerUserId: viewerId)
         comments = post.detailCommentItems
     }
 

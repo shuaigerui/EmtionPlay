@@ -29,9 +29,20 @@ final class UserData {
         } else {
             ensureTestUserExists()
             syncSeedPostsMediaIfNeeded()
+            syncSeedPostsCommentsIfNeeded()
             syncTestUserProfileFromSeedIfNeeded()
             syncTestUserBadgeInfoFromSeedIfNeeded()
+            migrateLegacyPostLikesIfNeeded()
         }
+    }
+
+    /// 种子帖子 id（仅这些帖子会同步评论；用户运行时发布的 `post_*` 不在此列）
+    private static var seedPostIds: Set<String> {
+        Set(seedDatabase.users.flatMap { $0.posts.map(\.postId) })
+    }
+
+    static func isSeedPostId(_ postId: String) -> Bool {
+        seedPostIds.contains(postId)
     }
 
     // MARK: - 查询
@@ -135,6 +146,39 @@ final class UserData {
         database.users.first { user in
             user.posts.contains { $0.postId == postId }
         }?.userId
+    }
+
+    func isPostLiked(postId: String, byUserId userId: String) -> Bool {
+        user(userId: userId)?.likedPostIds.contains(postId) ?? false
+    }
+
+    /// 当前用户点赞过的帖子（按 likedPostIds 顺序）
+    func likedPosts(for userId: String) -> [EP_PostModel] {
+        guard let liker = user(userId: userId) else { return [] }
+        let postsById = Dictionary(uniqueKeysWithValues: allPosts.map { ($0.postId, $0) })
+        return liker.likedPostIds.compactMap { postsById[$0] }
+    }
+
+    /// 切换当前用户对某帖的点赞，并更新帖子 likeCount
+    @discardableResult
+    func toggleLikePost(postId: String, ownerUserId: String) -> Bool {
+        guard var liker = user(userId: ownerUserId),
+              var post = post(postId: postId) else {
+            return false
+        }
+
+        let wasLiked = liker.likedPostIds.contains(postId)
+        if wasLiked {
+            liker.likedPostIds.removeAll { $0 == postId }
+            post.likeCount = max(0, post.likeCount - 1)
+        } else {
+            liker.likedPostIds.append(postId)
+            post.likeCount += 1
+        }
+        post.isLiked = false
+
+        guard updatePost(post) else { return false }
+        return updateUser(liker)
     }
 
     func users(excludingBlocked: Bool = false) -> [EP_UserModel] {
@@ -312,13 +356,10 @@ final class UserData {
             other.followCount = other.followingIds.count
             other.fanCount = other.fanIds.count
             other.hiddenPostIds.removeAll { deletedPostIds.contains($0) }
+            other.likedPostIds.removeAll { deletedPostIds.contains($0) }
 
             for j in other.posts.indices {
                 var post = other.posts[j]
-                if post.isLiked {
-                    post.isLiked = false
-                    post.likeCount = max(0, post.likeCount - 1)
-                }
                 let commentBefore = post.comments.count
                 post.comments.removeAll { $0.userId == userId }
                 if post.comments.count != commentBefore {
@@ -329,7 +370,25 @@ final class UserData {
             database.users[i] = other
         }
 
+        let deletedLikedPostIds = database.users[index].likedPostIds
         database.users.remove(at: index)
+
+        for likedPostId in deletedLikedPostIds {
+            guard let ownerIndex = database.users.firstIndex(where: { user in
+                user.posts.contains { $0.postId == likedPostId }
+            }),
+                  let postIndex = database.users[ownerIndex].posts.firstIndex(where: { $0.postId == likedPostId }) else {
+                continue
+            }
+            var post = database.users[ownerIndex].posts[postIndex]
+            post.likeCount = max(0, post.likeCount - 1)
+            database.users[ownerIndex].posts[postIndex] = post
+        }
+
+        for i in database.users.indices {
+            database.users[i].likedPostIds.removeAll { deletedPostIds.contains($0) }
+        }
+
         save()
 
         EP_ChatStore.shared.deleteAllForUser(userId: userId)
@@ -425,8 +484,36 @@ final class UserData {
     func reload() {
         database = Self.loadFromDisk(fileName: fileName) ?? database
         syncSeedPostsMediaIfNeeded()
+        syncSeedPostsCommentsIfNeeded()
         syncTestUserProfileFromSeedIfNeeded()
         syncTestUserBadgeInfoFromSeedIfNeeded()
+        migrateLegacyPostLikesIfNeeded()
+    }
+
+    /// 旧版把点赞写在帖子 `isLiked` 上，迁移到当前用户的 `likedPostIds`
+    private func migrateLegacyPostLikesIfNeeded() {
+        let flagKey = "ep_migrated_liked_post_ids_v1"
+        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
+        guard let viewerId = sessionUserId, var viewer = user(userId: viewerId) else { return }
+
+        var changed = false
+        for userIndex in database.users.indices {
+            for postIndex in database.users[userIndex].posts.indices {
+                var post = database.users[userIndex].posts[postIndex]
+                guard post.isLiked else { continue }
+                if !viewer.likedPostIds.contains(post.postId) {
+                    viewer.likedPostIds.append(post.postId)
+                }
+                post.isLiked = false
+                database.users[userIndex].posts[postIndex] = post
+                changed = true
+            }
+        }
+
+        if changed {
+            updateUser(viewer)
+        }
+        UserDefaults.standard.set(true, forKey: flagKey)
     }
 
     private static func loadFromDisk(fileName: String) -> EP_LocalDatabase? {
@@ -557,18 +644,36 @@ final class UserData {
         }
     }
 
+    /// 将 seed 中帖子的评论与本地对齐（改种子评论后详情页能显示最新内容）
+    private func syncSeedPostsCommentsIfNeeded() {
+        var changed = false
+        for seedUser in Self.seedDatabase.users {
+            guard let userIndex = database.users.firstIndex(where: { $0.userId == seedUser.userId }) else {
+                continue
+            }
+            for seedPost in seedUser.posts {
+                guard let postIndex = database.users[userIndex].posts.firstIndex(where: { $0.postId == seedPost.postId }) else {
+                    continue
+                }
+                var local = database.users[userIndex].posts[postIndex]
+                guard local.comments != seedPost.comments || local.commentCount != seedPost.commentCount else {
+                    continue
+                }
+                local.comments = seedPost.comments
+                local.commentCount = seedPost.commentCount
+                database.users[userIndex].posts[postIndex] = local
+                changed = true
+            }
+        }
+        if changed {
+            save()
+        }
+    }
+
     // MARK: - 种子数据（可按需修改）
 
     /// 内置 test 用户，可在种子或 `ensureTestUserExists` 中使用
     static func buildTestUser() -> EP_UserModel {
-        let comment = EP_PostCommentModel(
-            commentId: "c_test",
-            userId: testUserId,
-            userName: "Test",
-            avatar: "avatar_05",
-            content: "Just now",
-            createdAtText: "Just now"
-        )
         return EP_UserModel(
             userId: testUserId,
             name: "Test",
@@ -594,8 +699,8 @@ final class UserData {
                     content: "How's my outfit?How's my outfit?How's my outfit?",
                     isLiked: false,
                     likeCount: 8,
-                    commentCount: 1,
-                    comments: [comment]
+                    commentCount: 0,
+                    comments: []
                 ),
                 EP_PostModel(
                     postId: "p_test_02",
@@ -605,23 +710,55 @@ final class UserData {
                     coverImage: "post_temp",
                     video: "video_02",
                     content: "My first post here.",
-                    isLiked: true,
+                    isLiked: false,
                     likeCount: 15,
-                    commentCount: 2,
-                    comments: [comment, comment]
+                    commentCount: 0,
+                    comments: []
                 ),
             ]
         )
     }
 
     static let seedDatabase: EP_LocalDatabase = {
-        let commentSample = EP_PostCommentModel(
+        let commentOne = EP_PostCommentModel(
             commentId: "c_seed",
             userId: "u004",
             userName: "Nana",
-            avatar: "avatar_04",
-            content: "An hour ago",
+            avatar: "avatar_03",
+            content: "I think I saw you an hour ago.",
+            createdAtText: "Two hours ago"
+        )
+        let commentTwo = EP_PostCommentModel(
+            commentId: "c_seed2",
+            userId: "u001",
+            userName: "Marce",
+            avatar: "avatar_01",
+            content: "I'm so excited!",
             createdAtText: "An hour ago"
+        )
+        let commentThree = EP_PostCommentModel(
+            commentId: "c_seed3",
+            userId: "u003",
+            userName: "Thom",
+            avatar: "avatar_04",
+            content: "I love your outfit!",
+            createdAtText: "15 minutes ago"
+        )
+        let commentFour = EP_PostCommentModel(
+            commentId: "c_seed4",
+            userId: "u002",
+            userName: "Street",
+            avatar: "avatar_02",
+            content: "The scene was so much fun!",
+            createdAtText: "Just now"
+        )
+        let commentFive = EP_PostCommentModel(
+            commentId: "c_seed5",
+            userId: "u002",
+            userName: "Street",
+            avatar: "avatar_02",
+            content: "I hope to see you there next time.",
+            createdAtText: "2026-05-17"
         )
 
         func makePost(
@@ -634,9 +771,10 @@ final class UserData {
             video: String = "",
             isLiked: Bool = false,
             likeCount: Int = 12,
-            commentCount: Int = 1
+            comments postComments: [EP_PostCommentModel] = []
         ) -> EP_PostModel {
-            EP_PostModel(
+            let resolved = postComments.filter { $0.userId != userId }
+            return EP_PostModel(
                 postId: postId,
                 userId: userId,
                 authorName: authorName,
@@ -647,8 +785,8 @@ final class UserData {
                 content: content,
                 isLiked: isLiked,
                 likeCount: likeCount,
-                commentCount: commentCount,
-                comments: Array(repeating: commentSample, count: commentCount)
+                commentCount: resolved.count,
+                comments: resolved
             )
         }
 
@@ -671,8 +809,7 @@ final class UserData {
                         authorAvatar: "avatar_01",
                         content: "How's my outfit?How's my outfit?",
                         img: "friend_04",
-                        isLiked: true,
-                        commentCount: 2
+                        comments: [commentOne]
                     ),
                     makePost(
                         postId: "p002",
@@ -681,7 +818,7 @@ final class UserData {
                         authorAvatar: "avatar_01",
                         content: "Pink vibes today.",
                         video: "video_04",
-                        commentCount: 1
+                        comments: [commentFive]
                     ),
                 ]
             ),
@@ -702,8 +839,7 @@ final class UserData {
                         authorAvatar: "avatar_02",
                         content: "Street style check.",
                         img: "friend_02",
-                        isLiked: true,
-                        commentCount: 3
+                        comments: [commentTwo]
                     ),
                     makePost(
                         postId: "p004",
@@ -711,8 +847,7 @@ final class UserData {
                         authorName: "Street",
                         authorAvatar: "avatar_02",
                         content: "New cosplay wip.",
-                        video: "video_01",
-                        commentCount: 1
+                        video: "video_01"
                     ),
                 ]
             ),
@@ -733,7 +868,7 @@ final class UserData {
                         authorAvatar: "avatar_04",
                         content: "Do you like my cosplay outfit?",
                         img: "friend_03",
-                        commentCount: 2
+                        comments: [commentFour]
                     ),
                     makePost(
                         postId: "p008",
@@ -741,8 +876,7 @@ final class UserData {
                         authorName: "Thom",
                         authorAvatar: "avatar_04",
                         content: "I'm about to go on stage, I'm so nervous!",
-                        video: "video_06",
-                        commentCount: 2
+                        video: "video_06"
                     ),
                 ]
             ),
@@ -763,7 +897,7 @@ final class UserData {
                         authorAvatar: "avatar_04",
                         content: "He's so handsome! I love him so much! Does anyone know who he is? I really want his contact information~",
                         img: "friend_05",
-                        commentCount: 1
+                        comments: [commentThree]
                     ),
                     makePost(
                         postId: "p007",
@@ -771,9 +905,7 @@ final class UserData {
                         authorName: "Nana",
                         authorAvatar: "avatar_03",
                         content: "Thanks for all the likes!",
-                        video: "video_03",
-                        isLiked: true,
-                        commentCount: 2
+                        video: "video_03"
                     ),
                 ]
             ),

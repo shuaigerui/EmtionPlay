@@ -113,8 +113,14 @@ struct EP_PostModel: Codable, Equatable {
 
 extension EP_PostModel {
 
-    var feedItem: EP_PostFeedItem {
-        EP_PostFeedItem(
+    func feedItem(viewerUserId: String? = nil) -> EP_PostFeedItem {
+        let liked: Bool
+        if let viewerUserId {
+            liked = UserData.shared.isPostLiked(postId: postId, byUserId: viewerUserId)
+        } else {
+            liked = isLiked
+        }
+        return EP_PostFeedItem(
             postId: postId,
             userId: userId,
             coverImageName: coverImage,
@@ -123,7 +129,7 @@ extension EP_PostModel {
             avatarImageName: authorAvatar,
             userName: authorName,
             content: content,
-            isLiked: isLiked
+            isLiked: liked
         )
     }
 
